@@ -1,0 +1,20 @@
+{
+  "name": "nintendo-github-presence",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "check": "wrangler types --strict-vars false && tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "hono": "^4.13.21"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.0",
+    "wrangler": "^4.167.0"
+  }
+}

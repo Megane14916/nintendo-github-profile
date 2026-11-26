@@ -1,0 +1,6 @@
+{
+  "friend": {
+    "name": "Sample Player",
+    "presence": { "state": "OFFLINE", "game": {} }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nintendo-github-presence",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-24",
+  "vars": {
+    "PREVIEW_STATUS": ""
+  },
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "invocation_logs": false },
+    // Subrequest traces can include the private Presence URL.
+    "traces": { "enabled": false }
+  }
+}

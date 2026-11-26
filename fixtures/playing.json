@@ -1,0 +1,9 @@
+{
+  "friend": {
+    "name": "Sample Player",
+    "presence": {
+      "state": "ONLINE",
+      "game": { "name": "Starlight Trails", "totalPlayTime": 125 }
+    }
+  }
+}
