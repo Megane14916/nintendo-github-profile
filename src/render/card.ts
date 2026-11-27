@@ -1,5 +1,6 @@
 import type { GamePresence } from '../model/presence';
 import type { CardAssets } from './assets';
+import { getCardCopy, type CardCopyOptions } from './copy';
 import { renderAlternateCard } from './layouts/alternate';
 import { concepts } from './layouts/concepts';
 import { renderConcept } from './layouts/concepts/drawing';
@@ -39,9 +40,11 @@ export function renderCard(
   presence: GamePresence,
   assets: CardAssets = emptyAssets,
   style: CardStyle = 'default',
+  options?: CardCopyOptions,
 ): string {
-  if (isConceptStyle(style)) return renderConcept(presence, assets, concepts[style]);
+  const copy = getCardCopy(presence, options);
+  if (isConceptStyle(style)) return renderConcept(presence, assets, concepts[style], copy);
   const proposal = proposals.get(style);
-  if (proposal) return renderAlternateCard(presence, assets, proposal.theme, proposal.layout);
-  return renderDefaultCard(presence, assets, style === 'green' ? greenTheme : switchTheme);
+  if (proposal) return renderAlternateCard(presence, assets, proposal.theme, proposal.layout, copy);
+  return renderDefaultCard(presence, assets, style === 'green' ? greenTheme : switchTheme, copy);
 }

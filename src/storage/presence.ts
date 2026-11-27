@@ -1,4 +1,4 @@
-import type { GamePresence } from '../model/presence';
+import type { GamePresence, LastPlayedGame } from '../model/presence';
 import type { CardAssets } from '../render/assets';
 
 export interface PresenceSnapshot {
@@ -6,11 +6,15 @@ export interface PresenceSnapshot {
   presence: GamePresence;
   assets: CardAssets;
   refreshedAt: string;
+  lastPlayed?: LastPlayedGame;
 }
+
+type SnapshotMetadata = Pick<PresenceSnapshot, 'refreshedAt' | 'lastPlayed'>;
 
 export const PRESENCE_KEY = 'presence:current';
 export const SNAPSHOT_MAX_AGE_MS = 10 * 60 * 1000;
 const MAX_KV_VALUE_BYTES = 25 * 1024 * 1024;
+const MAX_KV_METADATA_BYTES = 1024;
 
 function record(value: unknown): Record<string, unknown> | undefined {
   if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
@@ -35,6 +39,27 @@ function isNullableString(value: unknown): boolean {
   return value === null || typeof value === 'string';
 }
 
+function isTitleId(value: unknown): boolean {
+  return typeof value === 'string' && /^[0-9a-f]{16}$/.test(value);
+}
+
+function isHistoryTitle(value: unknown): boolean {
+  return typeof value === 'string' && !!value.trim() && Array.from(value).length <= 64
+    && !/[\u0000-\u001f\u007f-\u009f\ud800-\udfff]/u.test(value);
+}
+
+function isLastPlayed(value: unknown, refreshedAt: string): value is LastPlayedGame {
+  const lastPlayed = record(value);
+  if (!isTimestamp(lastPlayed?.seenAt) || lastPlayed.seenAt > refreshedAt
+    || !isHistoryTitle(lastPlayed.title)
+    || (lastPlayed.titleId !== undefined && !isTitleId(lastPlayed.titleId))) return false;
+  if (lastPlayed.titles === undefined) return true;
+  const titles = record(lastPlayed.titles);
+  return !!titles && isTitleId(lastPlayed.titleId)
+    && (titles.ja === undefined || isHistoryTitle(titles.ja))
+    && (titles.en === undefined || isHistoryTitle(titles.en));
+}
+
 function isSnapshot(value: unknown): value is PresenceSnapshot {
   const snapshot = record(value);
   const presence = record(snapshot?.presence);
@@ -44,11 +69,13 @@ function isSnapshot(value: unknown): value is PresenceSnapshot {
     || (presence.status !== 'playing' && presence.status !== 'online' && presence.status !== 'offline')
     || !isNullableString(user?.name) || !isNullableString(user?.avatarUrl)
     || !isAsset(assets?.avatarDataUri) || !isAsset(assets?.gameImageDataUri)) return false;
+  if (snapshot.lastPlayed !== undefined && !isLastPlayed(snapshot.lastPlayed, snapshot.refreshedAt)) return false;
 
   if (presence.game === null) return assets?.gameImageDataUri === null;
   const game = record(presence.game);
   const minutes = game?.totalPlayTimeMinutes;
   return presence.status === 'playing' && typeof game?.title === 'string' && !!game.title.trim()
+    && (game.titleId === undefined || isTitleId(game.titleId))
     && isNullableString(game.imageUrl)
     && (minutes === null || (typeof minutes === 'number' && Number.isSafeInteger(minutes) && minutes > 0));
 }
@@ -67,19 +94,16 @@ export async function readPresenceSnapshot(kv: Pick<KVNamespace, 'get'>): Promis
   return age >= 0 && age < SNAPSHOT_MAX_AGE_MS ? snapshot : null;
 }
 
-export async function snapshotRefreshedSince(
-  kv: Pick<KVNamespace, 'getWithMetadata'>,
-  scheduledTime: number,
-): Promise<boolean> {
-  const { value, metadata } = await kv.getWithMetadata<{ refreshedAt?: string }>(PRESENCE_KEY, 'stream');
+export async function readPresenceMetadata(kv: Pick<KVNamespace, 'getWithMetadata'>): Promise<SnapshotMetadata | null> {
+  const { value, metadata } = await kv.getWithMetadata<Record<string, unknown>>(PRESENCE_KEY, 'stream');
   await value?.cancel();
-  if (!isTimestamp(metadata?.refreshedAt)) return false;
-  const refreshedAt = Date.parse(metadata.refreshedAt);
-  return refreshedAt >= scheduledTime && refreshedAt <= Date.now();
+  if (!isTimestamp(metadata?.refreshedAt) || Date.parse(metadata.refreshedAt) > Date.now()) return null;
+  const { refreshedAt, lastPlayed } = metadata;
+  return { refreshedAt, lastPlayed: isLastPlayed(lastPlayed, refreshedAt) ? lastPlayed : undefined };
 }
 
 export async function writePresenceSnapshot(kv: Pick<KVNamespace, 'put'>, snapshot: PresenceSnapshot): Promise<void> {
-  const { presence, assets } = snapshot;
+  const { presence, assets, lastPlayed } = snapshot;
   // The card only uses embedded images. Exclude image URLs and any upstream fields.
   const stored: PresenceSnapshot = {
     schemaVersion: 1,
@@ -90,6 +114,7 @@ export async function writePresenceSnapshot(kv: Pick<KVNamespace, 'put'>, snapsh
       user: { name: presence.user.name, avatarUrl: null },
       game: presence.game && {
         title: presence.game.title,
+        titleId: presence.game.titleId,
         imageUrl: null,
         totalPlayTimeMinutes: presence.game.totalPlayTimeMinutes,
       },
@@ -98,9 +123,18 @@ export async function writePresenceSnapshot(kv: Pick<KVNamespace, 'put'>, snapsh
       avatarDataUri: assets.avatarDataUri,
       gameImageDataUri: assets.gameImageDataUri,
     },
+    lastPlayed: lastPlayed && {
+      title: lastPlayed.title,
+      titleId: lastPlayed.titleId,
+      titles: lastPlayed.titles && { ja: lastPlayed.titles.ja, en: lastPlayed.titles.en },
+      seenAt: lastPlayed.seenAt,
+    },
   };
   if (!isSnapshot(stored)) throw new Error('Invalid presence snapshot');
   const value = JSON.stringify(stored);
-  if (new TextEncoder().encode(value).byteLength > MAX_KV_VALUE_BYTES) throw new Error('Presence snapshot exceeds KV value limit');
-  await kv.put(PRESENCE_KEY, value, { metadata: { refreshedAt: stored.refreshedAt } });
+  const metadata = { refreshedAt: stored.refreshedAt, ...(stored.lastPlayed ? { lastPlayed: stored.lastPlayed } : {}) };
+  const encoder = new TextEncoder();
+  if (encoder.encode(value).byteLength > MAX_KV_VALUE_BYTES) throw new Error('Presence snapshot exceeds KV value limit');
+  if (encoder.encode(JSON.stringify(metadata)).byteLength > MAX_KV_METADATA_BYTES) throw new Error('Presence metadata exceeds KV metadata limit');
+  await kv.put(PRESENCE_KEY, value, { metadata });
 }

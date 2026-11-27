@@ -2,7 +2,6 @@ import type { Bindings } from './config';
 import app from './index';
 import { refreshPresence } from './jobs/refresh-presence';
 import { PresenceError } from './presence/error';
-import { snapshotRefreshedSince } from './storage/presence';
 
 // KV metadata covers already-finished runs. This guard covers overlap in the same isolate.
 let refreshInProgress = false;
@@ -18,8 +17,7 @@ export default {
     refreshInProgress = true;
 
     try {
-      if (env.PRESENCE_KV && await snapshotRefreshedSince(env.PRESENCE_KV, controller.scheduledTime)) return;
-      await refreshPresence(env);
+      await refreshPresence(env, controller.scheduledTime);
     } catch (failure) {
       const safe = failure instanceof PresenceError ? failure : new PresenceError('storage', 'request-failed');
       console.error('presence_refresh_failed', { stage: safe.stage, code: safe.code, status: safe.status });

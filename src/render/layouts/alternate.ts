@@ -1,7 +1,7 @@
 import type { GamePresence } from '../../model/presence';
 import { escapeXml } from '../../utils/escape-xml';
 import type { CardAssets } from '../assets';
-import { getCardCopy, shorten } from '../copy';
+import { fitCardDetail, shorten, type CardCopy } from '../copy';
 import type { RedTreatment } from '../themes';
 import type { CardLayout } from './presets';
 
@@ -10,9 +10,12 @@ const HEIGHT = 180;
 const AVATAR_SIZE = 24;
 const BADGE_HEIGHT = 25;
 
-export function renderAlternateCard(presence: GamePresence, assets: CardAssets, theme: RedTreatment, layout: CardLayout): string {
+export function renderAlternateCard(
+  presence: GamePresence, assets: CardAssets, theme: RedTreatment, layout: CardLayout, copy: CardCopy,
+): string {
   const { art, summary, profile, badge, rule, frame } = layout;
-  const { status, heading, playTime } = getCardCopy(presence);
+  const { status, heading, language, description } = copy;
+  const detail = fitCardDetail(copy, summary.width, theme.detailSize);
   const { background, muted, text, statusBackground, placeholder, radius } = theme;
   const accent = theme.status[presence.status];
 
@@ -53,8 +56,8 @@ export function renderAlternateCard(presence: GamePresence, assets: CardAssets, 
         </g>`
       : '';
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xml:lang="ja" role="img" aria-labelledby="card-title">
-  <title id="card-title">Nintendo Switch ${status}${title ? '：' + title : ''}</title>
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xml:lang="${language}" role="img" aria-labelledby="card-title">
+  <title id="card-title">Nintendo Switch ${escapeXml(description)}</title>
   <defs>
     <clipPath id="art"><rect x="${art.x}" y="${art.y}" width="${art.size}" height="${art.size}" rx="${theme.artworkRadius}"/></clipPath>
     <clipPath id="avatar"><circle cx="${avatarX}" cy="${avatarY}" r="${AVATAR_SIZE / 2}"/></clipPath>
@@ -73,7 +76,7 @@ export function renderAlternateCard(presence: GamePresence, assets: CardAssets, 
     <text x="${badgeX + 22}" y="${badge.y + 17}" fill="${accent}" stroke="${accent}" font-size="${theme.labelSize}" font-weight="700">${status}</text>
     <g clip-path="url(#summary)" text-anchor="${summaryAnchor}">
       ${title ? `<text x="${summary.x}" y="${summary.titleY}" fill="${text}" stroke="${text}" font-size="${titleSize}" font-weight="${theme.titleWeight}">${title}</text>` : ''}
-      ${playTime ? `<text x="${summary.x}" y="${summary.timeY}" fill="${muted}" stroke="${muted}" font-size="${theme.detailSize}" font-weight="500">${playTime}</text>` : ''}
+      ${detail ? `<text x="${summary.x}" y="${summary.timeY}" fill="${muted}" stroke="${muted}" font-size="${theme.detailSize}" font-weight="500">${escapeXml(detail)}</text>` : ''}
     </g>
     ${name ? `<text x="${nameX}" y="${nameY}" fill="${muted}" stroke="${muted}" text-anchor="${nameAnchor}"
       font-size="${theme.detailSize}" font-weight="600" clip-path="url(#profile)">${name}</text>` : ''}

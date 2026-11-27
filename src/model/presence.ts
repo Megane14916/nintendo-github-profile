@@ -1,4 +1,12 @@
 export type PlayingStatus = 'playing' | 'online' | 'offline' | 'unknown';
+export type CardLanguage = 'ja' | 'en';
+
+export interface LastPlayedGame {
+  title: string;
+  titleId?: string;
+  titles?: Partial<Record<CardLanguage, string>>;
+  seenAt: string;
+}
 
 export interface GamePresence {
   status: PlayingStatus;
@@ -8,6 +16,7 @@ export interface GamePresence {
   };
   game: {
     title: string;
+    titleId?: string;
     imageUrl: string | null;
     totalPlayTimeMinutes: number | null;
   } | null;

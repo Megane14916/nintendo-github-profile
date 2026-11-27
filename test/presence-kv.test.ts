@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import offline from '../fixtures/offline.json';
 import playing from '../fixtures/playing.json';
 import app from '../src/index';
 import { refreshPresence } from '../src/jobs/refresh-presence';
@@ -50,11 +51,12 @@ describe('KV presence cards', () => {
     vi.stubGlobal('fetch', fetch);
 
     await expect(refreshPresence(env)).resolves.toBe(new Date(now).toISOString());
+    const lastPlayed = { title: 'Starlight Trails', seenAt: new Date(now).toISOString() };
     expect(kv.put).toHaveBeenCalledExactlyOnceWith(PRESENCE_KEY, expect.any(String), {
-      metadata: { refreshedAt: new Date(now).toISOString() },
+      metadata: { refreshedAt: new Date(now).toISOString(), lastPlayed },
     });
     const stored = await kv.get(PRESENCE_KEY);
-    expect(JSON.parse(stored)).toEqual(snapshot());
+    expect(JSON.parse(stored)).toEqual({ ...snapshot(), lastPlayed });
     expect(stored).not.toContain('private-presence-url');
     expect(stored).not.toContain('private-image-url');
     expect(stored).not.toContain(avatar);
@@ -69,6 +71,106 @@ describe('KV presence cards', () => {
     expect(svg).toContain('合計プレイ時間 125分');
     expect(svg.match(/<image /g)).toHaveLength(2);
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('localizes both the current game and the last played game from one snapshot', async () => {
+    const titleId = '0100c2500fc20000';
+    const kv = memoryKv();
+    const env = { PRESENCE_KV: kv, NXAPI_PRESENCE_URL: endpoint };
+    let payload: unknown = {
+      friend: {
+        ...playing.friend,
+        presence: { state: 'PLAYING', game: { name: 'Source title', shopUri: 'https://ec.nintendo.com/apps/' + titleId + '/JP' } },
+      },
+    };
+    const jp = 'https://store-jp.nintendo.com/item/software/D70010000046394';
+    const jpRedirect = 'https://ec.nintendo.com/JP/ja/titles/70010000046394';
+    const us = 'https://www.nintendo.com/us/store/products/splatoon-3-switch/';
+    const usRedirect = 'https://www.nintendo.com/pos-redirect/70010000046395';
+    const html = (title: string) => new Response('<head><title>' + title + '</title></head>', {
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
+    const fetch = vi.fn(async (url: URL) => {
+      switch (url.toString()) {
+        case endpoint: return Response.json(payload);
+        case 'https://ec.nintendo.com/apps/' + titleId + '/JP': return Response.redirect(jpRedirect, 307);
+        case jpRedirect: return Response.redirect(jp, 307);
+        case 'https://ec.nintendo.com/apps/' + titleId + '/US': return Response.redirect(usRedirect, 307);
+        case usRedirect: return Response.redirect(usRedirect + '/', 308);
+        case usRedirect + '/': return Response.redirect('https://www.nintendo.com/us/pos-redirect/70010000046395/', 301);
+        case 'https://www.nintendo.com/us/pos-redirect/70010000046395/': return Response.redirect(us, 308);
+        case jp: return html('スプラトゥーン3 | Nintendo Store');
+        case us: return html('Splatoon&trade; 3 for Nintendo Switch - Nintendo Official Site');
+        default: throw new Error('Unexpected fetch ' + url);
+      }
+    });
+    vi.stubGlobal('fetch', fetch);
+
+    await refreshPresence(env);
+    for (const [lang, status, title] of [
+      ['ja', 'オンライン', 'スプラトゥーン3'],
+      ['en', 'Online', 'Splatoon™ 3'],
+    ]) {
+      const svg = await (await app.request('/card.svg?lang=' + lang, {}, env)).text();
+      expect(svg).toContain('xml:lang="' + lang + '"');
+      expect(svg).toContain('>' + status + '</text>');
+      expect(svg).toContain('>' + title + '</text>');
+    }
+    expect(fetch).toHaveBeenCalledTimes(9);
+    expect(kv.put).toHaveBeenCalledOnce();
+
+    vi.setSystemTime(now + 120_000);
+    await refreshPresence(env);
+    expect(fetch).toHaveBeenCalledTimes(10);
+
+    payload = offline;
+    vi.setSystemTime(now + SNAPSHOT_MAX_AGE_MS + 120_000);
+    await refreshPresence(env);
+    const stored = JSON.parse(await kv.get(PRESENCE_KEY));
+    expect(stored.lastPlayed).toEqual({
+      title: 'Source title',
+      titleId,
+      titles: { ja: 'スプラトゥーン3', en: 'Splatoon™ 3' },
+      seenAt: new Date(now + 120_000).toISOString(),
+    });
+    expect(stored.presence.game).toBeNull();
+    const svg = await (await app.request('/card.svg?lang=en', {}, env)).text();
+    for (const text of ['Offline', 'No game in progress', 'Recently played', 'Splatoon™ 3']) {
+      expect(svg).toContain('>' + text + '</text>');
+    }
+    expect(fetch).toHaveBeenCalledTimes(11);
+    expect(kv.put).toHaveBeenCalledTimes(3);
+  });
+
+  it('keeps the upstream title for a missing locale and skips untrusted redirects', async () => {
+    const titleId = '0100000000000000';
+    const kv = memoryKv();
+    const env = { PRESENCE_KV: kv, NXAPI_PRESENCE_URL: endpoint };
+    const fetch = vi.fn(async (url: URL) => {
+      if (url.toString() === endpoint) {
+        return Response.json({ friend: { presence: { state: 'PLAYING', game: {
+          name: 'Source & Name', shopUri: 'https://ec.nintendo.com/apps/' + titleId + '/JP',
+        } } } });
+      }
+      if (url.pathname.endsWith('/JP')) {
+        return Response.redirect('https://untrusted.example.invalid/product');
+      }
+      if (url.hostname === 'ec.nintendo.com') {
+        return Response.redirect('https://www.nintendo.com/store/products/example/');
+      }
+      return new Response('<title>Example &amp; Game for Nintendo Switch 2 - Nintendo Official Site</title>', {
+        headers: { 'Content-Type': 'text/html' },
+      });
+    });
+    vi.stubGlobal('fetch', fetch);
+
+    await refreshPresence(env);
+    const ja = await (await app.request('/card.svg', {}, env)).text();
+    const en = await (await app.request('/card.svg?lang=en', {}, env)).text();
+    expect(ja).toContain('>Source &amp; Name</text>');
+    expect(en).toContain('>Example &amp; Game</text>');
+    expect(fetch.mock.calls.map(([url]) => url.hostname)).not.toContain('untrusted.example.invalid');
+    expect(fetch).toHaveBeenCalledTimes(4);
   });
 
   it.each([
@@ -112,7 +214,10 @@ describe('KV presence cards', () => {
   it('renders an explicit preview without touching KV', async () => {
     const kv = memoryKv();
     const response = await app.request('/card.svg', {}, { PRESENCE_KV: kv, PREVIEW_STATUS: 'offline' });
-    expect(await response.text()).toContain('オフライン');
+    const svg = await response.text();
+    expect(svg).toContain('オフライン');
+    expect(svg).toContain('プレイ中のゲームはありません');
+    expect(svg).not.toContain('最近プレイしたゲーム');
     expect(kv.get).not.toHaveBeenCalled();
   });
 

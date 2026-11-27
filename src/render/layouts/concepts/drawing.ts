@@ -1,7 +1,7 @@
 import type { GamePresence } from '../../../model/presence';
 import { escapeXml } from '../../../utils/escape-xml';
 import type { CardAssets } from '../../assets';
-import { getCardCopy, shorten } from '../../copy';
+import { fitCardDetail, shorten, type CardCopy } from '../../copy';
 import { greenTheme, redTreatments, switchTheme } from '../../themes';
 
 export const white = '#FFFFFF';
@@ -29,6 +29,9 @@ export interface Drawing {
   title: string | null;
   time: string | null;
   minutes: number | null;
+  minutesSuffix: string;
+  playTimeLabel: string;
+  recent: CardCopy['recent'];
   name: string | null;
   status: string;
   text(value: string | null, x: number, y: number, style: TextStyle): string;
@@ -40,8 +43,9 @@ export interface Drawing {
 
 export type DrawConcept = (drawing: Drawing) => string;
 
-export function renderConcept(presence: GamePresence, assets: CardAssets, draw: DrawConcept): string {
-  const { status, heading: title, playTime: time } = getCardCopy(presence);
+export function renderConcept(presence: GamePresence, assets: CardAssets, draw: DrawConcept, copy: CardCopy): string {
+  const { status, heading: title, playTime, playTimeLabel, minutesSuffix, recent, recentLine, language, description } = copy;
+  const time = playTime ?? recentLine;
   const minutes = presence.game?.totalPlayTimeMinutes ?? null;
   const name = presence.user.name;
   const defs: string[] = [];
@@ -55,11 +59,12 @@ export function renderConcept(presence: GamePresence, assets: CardAssets, draw: 
   function text(value: string | null, x: number, y: number, style: TextStyle): string {
     if (!value) return '';
     const { width, size = 14, weight = 600, color = white, face = 'sans', align = 'start' } = style;
+    const visible = value === time ? fitCardDetail(copy, width, size) ?? value : shorten(value, width, size);
     const left = x - (align === 'middle' ? width / 2 : align === 'end' ? width : 0);
     const mask = clip(`<rect x="${left}" y="${y - size - 5}" width="${width}" height="${size + 13}"/>`);
     return `<text x="${x}" y="${y}" text-anchor="${align}" font-family="${escapeXml(fonts[face])}"
       font-size="${size}" font-weight="${weight}" fill="${color}" stroke="${color}" stroke-width="0.22"
-      stroke-linejoin="round" ${mask}>${escapeXml(shorten(value, width, size))}</text>`;
+      stroke-linejoin="round" ${mask}>${escapeXml(visible)}</text>`;
   }
 
   function art(x: number, y: number, width: number, height = width, radius = 12): string {
@@ -106,10 +111,9 @@ export function renderConcept(presence: GamePresence, assets: CardAssets, draw: 
       ${text(status, left + 21, y + 16, { width: width - 13, size: 12, weight: 800, color })}`;
   }
 
-  const body = draw({ title, time, minutes, name, status, text, art, avatar, profile, pill });
-  const description = escapeXml(title ? status + '：' + title : status);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="180" viewBox="0 0 600 180" xml:lang="ja" role="img" aria-labelledby="card-title">
-  <title id="card-title">Nintendo Switch ${description}</title>
+  const body = draw({ title, time, minutes, minutesSuffix, playTimeLabel, recent, name, status, text, art, avatar, profile, pill });
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="180" viewBox="0 0 600 180" xml:lang="${language}" role="img" aria-labelledby="card-title">
+  <title id="card-title">Nintendo Switch ${escapeXml(description)}</title>
   <defs>${defs.join('')}</defs>
   <rect width="600" height="180" rx="18" fill="${switchTheme.background}"/>
   ${body}

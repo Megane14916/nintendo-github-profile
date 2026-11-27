@@ -25,6 +25,8 @@ export function normalizePresence(payload: unknown, fetchedAt: string): GamePres
   const presence = record(friend?.presence);
   const game = record(presence?.game);
   const title = text(game?.name);
+  const shopUri = text(game?.shopUri);
+  const titleId = shopUri?.match(/^https:\/\/ec\.nintendo\.com\/apps\/([0-9a-f]{16})(?:[/?#]|$)/i)?.[1].toLowerCase();
   const status = statusFor(presence?.state, title);
   const minutes = game?.totalPlayTime;
 
@@ -36,6 +38,7 @@ export function normalizePresence(payload: unknown, fetchedAt: string): GamePres
     },
     game: status === 'playing' && title ? {
       title,
+      ...(titleId ? { titleId } : {}),
       imageUrl: text(game?.imageUri),
       totalPlayTimeMinutes: typeof minutes === 'number' && Number.isSafeInteger(minutes) && minutes > 0
         ? minutes

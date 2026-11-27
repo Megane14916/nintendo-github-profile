@@ -23,9 +23,10 @@ function svgResponse(svg: string, cacheControl = 'no-store'): Response {
 
 app.get('/card.svg', async (c) => {
   const style = resolveCardStyle(c.req.query('style'));
+  const language = c.req.query('lang') === 'en' ? 'en' : 'ja';
   const fixture = fixtures.get(c.env?.PREVIEW_STATUS ?? '');
   if (fixture !== undefined) {
-    return svgResponse(renderCard(normalizePresence(fixture, new Date().toISOString()), undefined, style));
+    return svgResponse(renderCard(normalizePresence(fixture, new Date().toISOString()), undefined, style, { language }));
   }
 
   const kv = c.env?.PRESENCE_KV;
@@ -34,12 +35,15 @@ app.get('/card.svg', async (c) => {
     if (snapshot) {
       const remainingSeconds = Math.floor((Date.parse(snapshot.refreshedAt) + SNAPSHOT_MAX_AGE_MS - Date.now()) / 1000);
       const cacheSeconds = Math.max(0, Math.min(CACHE_SECONDS, remainingSeconds));
-      return svgResponse(renderCard(snapshot.presence, snapshot.assets, style), 'public, max-age=' + cacheSeconds);
+      return svgResponse(renderCard(snapshot.presence, snapshot.assets, style, {
+        language,
+        lastPlayed: snapshot.lastPlayed,
+      }), 'public, max-age=' + cacheSeconds);
     }
   } catch {
     console.warn('presence_kv_unavailable');
   }
-  return svgResponse(renderCard(normalizePresence(error, new Date().toISOString()), undefined, style));
+  return svgResponse(renderCard(normalizePresence(error, new Date().toISOString()), undefined, style, { language }));
 });
 
 export default app;

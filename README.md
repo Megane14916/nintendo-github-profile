@@ -1,6 +1,7 @@
 # Nintendo Switch GitHub Presence Card
 
 Nintendo Switch のオンライン状態やプレイ中のゲームを、GitHub プロフィールに埋め込める SVG カードとして表示します。
+オフライン時は、定期更新で最後に確認したゲームも表示します。
 
 - カードの掲載例 [Megane14916 の GitHub プロフィール](https://github.com/Megane14916)
 
@@ -84,10 +85,11 @@ npx wrangler login
 npx wrangler deploy --secrets-file .env.production.json
 ```
 
-デプロイ後、Cron の初回更新を待ち、発行された URL をプロフィール README に画像として貼ります。デザインは `style` で選べます。
+デプロイ後、Cron の初回更新を待ち、発行された URL をプロフィール README に画像として貼ります。デザインは `style`、表示言語は `lang=ja`（省略時の既定値）または `lang=en` で選べます。
 
 ```md
-![Nintendo Switch Activity](https://<worker-domain>/card.svg?style=default)
+![Nintendo Switch Activity](https://<worker-domain>/card.svg?style=default&lang=en)
 ```
 
 最後の正常更新から10分経つと「状態を取得できません」と表示します。GitHub 上の表示は画像キャッシュで遅れる場合があります。
+最近プレイしたゲームは、Cron がプレイ中のタイトルを確認した時点から表示できます。指定言語のゲーム名を Nintendo eショップから取得できないときは、取得元が返した名前を使います。

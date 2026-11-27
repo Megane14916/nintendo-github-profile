@@ -136,6 +136,15 @@ describe('GET /card.svg', () => {
     expect(await response.text()).toContain('>' + time + '</text>');
   });
 
+  it.each(['default', 'profile', 'minutes', 'handheld'])('localizes English copy for %s', async (style) => {
+    const response = await app.request('/card.svg?style=' + style + '&lang=en', {}, { PREVIEW_STATUS: 'playing' });
+    const svg = await response.text();
+    expect(svg).toContain('xml:lang="en"');
+    expect(svg).toContain('>Online</text>');
+    expect(svg).toContain('125 min</text>');
+    expect(svg).not.toContain('合計プレイ時間');
+  });
+
   it('falls back to the original design for unknown styles', async () => {
     const bindings = { PREVIEW_STATUS: 'playing' };
     const original = await app.request('/card.svg', {}, bindings);

@@ -37,22 +37,26 @@ export const typography = {
 
   minutes: (d) => {
     const digits = d.minutes?.toString();
-    const counter = digits ? `
+    const timeOrRecent = digits ? `
       <rect x="420" y="21" width="159" height="138" rx="18" fill="${deepRed}"/>
-      ${d.text(digits + '分', 499.5, 101, {
+      ${d.text(digits + d.minutesSuffix, 499.5, 101, {
         width: 152,
-        size: Math.min(38, Math.floor(152 / (digits.length * 0.75 + 2.15))),
+        size: Math.min(38, Math.floor(152 / (digits.length * 0.75 + (d.minutesSuffix.length === 1 ? 2.15 : 4)))),
         align: 'middle',
         weight: 850,
       })}
-      ${d.text('合計プレイ時間', 499.5, 128, { width: 142, size: 13, align: 'middle' })}` : '';
+      ${d.text(d.playTimeLabel, 499.5, 128, { width: 142, size: 13, align: 'middle' })}`
+      : d.recent ? `
+      <rect x="420" y="21" width="159" height="138" rx="18" fill="${deepRed}"/>
+      ${d.text(d.recent.label, 499.5, 75, { width: 142, size: 11, align: 'middle' })}
+      ${d.text(d.recent.title, 499.5, 104, { width: 142, size: 16, weight: 800, align: 'middle' })}` : '';
 
     return `
       ${d.art(22, 31, 117, 117, 14)}
       ${d.profile(155, 36, 243)}
       ${d.text(d.title, 154, 90, { width: 247, size: 25, weight: 800 })}
       ${d.pill(154, 118, { tone: 'mint' })}
-      ${counter}`;
+      ${timeOrRecent}`;
   },
 
   quiet: (d) => `
