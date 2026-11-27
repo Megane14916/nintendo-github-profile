@@ -67,7 +67,7 @@ npm test
 1. Nintendo Switch 本体に連携したサブアカウントとメインアカウントをフレンドにし、メインアカウントのオンライン状態をサブアカウントに公開します。
 2. ローカルの nxapi CLI でサブアカウントを認証し、`npx --no-install nxapi nso friends` でメインアカウントの状態と **NSA ID** を確認します。CLI のローカルデータにある `NintendoAccountToken.<サブアカウントの Nintendo Account ID>` の値を使います。トークンや認証時の出力を共有しないでください。[nxapi CLI の認証手順](https://github.com/samuelthomas2774/nxapi/blob/main/docs/cli.md#login-to-the-nintendo-switch-online-app)
 3. nxapi-auth で `Public` の OAuth クライアントを登録し、`Client credentials` と `ca:gf ca:er ca:dr` の3つのスコープを有効にします。Coral 認証と通信の暗号化・復号には nxapi の認証補助サービスを使い、Nintendo が発行した短期トークンを同サービスへ送信します。[クライアント登録](https://nxapi-auth.fancy.org.uk/oauth/clients) · [Coral 認証の仕様](https://github.com/samuelthomas2774/nxapi#coral-client-authentication)
-4. `.dev.vars.example` を `.dev.vars` にコピーし、次の値を設定します。`npm run dev` で起動し、[ローカルのカード](http://localhost:8787/card.svg) を開きます。
+4. `.dev.vars.example` を `.dev.vars` にコピーし、次の値を設定します。保存後に「ローカル KV の手動更新」の手順を実行します。
 
 | 変数 | 設定値 |
 | --- | --- |
@@ -77,7 +77,7 @@ npm test
 | `NXAPI_AUTH_CLIENT_ID` | 登録した OAuth クライアント ID |
 | `NXAPI_AUTH_CLIENT_SECRET` | 発行された場合に設定する OAuth クライアントシークレット |
 
-設定後、プレイ中、オンライン、オフラインでゲーム名や状態が変わることを確認できます。認証や取得に失敗すると、カードには「状態を取得できません」と表示されます。Worker の `presence_unavailable` ログには失敗した処理と分類が記録されます。
+プレイ中、オンライン、オフラインの各状態で手動更新すると、ゲーム名や状態の表示を確認できます。取得に失敗した場合は更新コマンドに失敗した処理が表示されます。
 
 ### nxapi-auth の Presence API
 
@@ -85,13 +85,26 @@ npm test
 
 公開時は `NINTENDO_SESSION_TOKEN`、`NXAPI_AUTH_CLIENT_SECRET`、`NXAPI_PRESENCE_URL` を、利用する取得元に応じて Worker Secret に設定します。ローカルの `.dev.vars` は Git の管理対象外です。
 
+### ローカル KV の手動更新
+
+実 API の設定後、プロジェクトのディレクトリで実行します。
+
+```sh
+npm run refresh
+npm run dev
+```
+
+`refresh` は設定した取得元から最新の状態と画像を取得し、ローカルの `PRESENCE_KV` に1件保存します。`/card.svg` は保存内容を読み、更新から10分で「状態を取得できません」と表示します。新しい状態を確認するときは、再度 `npm run refresh` を実行してください。更新に失敗した場合、既存のスナップショットは次の正常更新まで保持されます。[ローカルのカード](http://localhost:8787/card.svg)
+
+Wrangler はローカルの KV を自動作成します。本番への初回デプロイ時は、同じ設定からアカウントに KV 名前空間をプロビジョニングできます。[Wrangler の自動プロビジョニング](https://developers.cloudflare.com/workers/wrangler/configuration/#automatic-provisioning)
+
 公開後は、プロフィール README の画像 URL に Worker の URL を指定します。
 
 ```md
 ![Nintendo Switch Activity](https://<worker-domain>/card.svg)
 ```
 
-実 API の成功応答は最大90秒キャッシュします。GitHub 上では画像プロキシによって反映がさらに遅れることがあります。
+カードのキャッシュは最大90秒で、スナップショットの有効期限が近い場合は短くなります。GitHub 上では画像プロキシによって反映がさらに遅れることがあります。
 
 ## 構成
 
@@ -99,4 +112,5 @@ npm test
 - `src/nintendo/` がサブアカウントで認証し、指定したフレンドの状態を取得します。短期トークンは Worker 内のメモリで再利用します。
 - `scripts/build-worker.mjs` が nxapi の Coral クライアントを Workers 向けにバンドルします。検証した nxapi プレリリースを固定し、公開設定の Coral 互換バージョンをリクエスト時に取得します。
 - `src/render/assets.ts` が許可された画像を取得してデータ URI に変換します。
+- `src/storage/presence.ts` がスナップショットを検証し、KV の `presence:current` で読み書きします。
 - レイアウトは `src/render/layouts/`、配色と文字サイズは `src/render/themes.ts` で変更できます。

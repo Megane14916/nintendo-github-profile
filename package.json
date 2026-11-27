@@ -6,6 +6,7 @@
   "engines": { "node": ">=22.12.0" },
   "scripts": {
     "dev": "wrangler dev --local",
+    "refresh": "node scripts/build-worker.mjs --refresh && node scripts/refresh-presence.mjs",
     "check": "wrangler types --strict-vars false && tsc --noEmit",
     "test": "vitest run"
   },

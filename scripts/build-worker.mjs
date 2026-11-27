@@ -16,11 +16,12 @@ const coralVersion = (await readFile(coralFile, 'utf8')).match(/export const ZNC
 const version = pkg.version.split('-')[0];
 const revision = pkg.__nxapi_git?.revision;
 if (!coralVersion || !revision) throw new Error('Cannot read nxapi build metadata');
+const refresh = process.argv.includes('--refresh');
 
 await build({
   absWorkingDir: root,
-  entryPoints: ['src/index.ts'],
-  outfile: '.wrangler/worker/index.mjs',
+  entryPoints: [refresh ? 'src/presence/refresh.ts' : 'src/index.ts'],
+  outfile: refresh ? '.wrangler/worker/refresh.mjs' : '.wrangler/worker/index.mjs',
   bundle: true,
   format: 'esm',
   platform: 'neutral',

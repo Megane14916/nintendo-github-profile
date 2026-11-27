@@ -14,6 +14,7 @@
     "MAIN_NSA_ID": "",
     "NXAPI_AUTH_CLIENT_ID": ""
   },
+  "kv_namespaces": [{ "binding": "PRESENCE_KV" }],
   "observability": {
     "enabled": true,
     "logs": { "enabled": true, "invocation_logs": false },

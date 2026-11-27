@@ -9,6 +9,7 @@ import { normalizePresence } from './presence/normalize';
 import { createPresenceProvider } from './presence/provider';
 import { loadCardAssets } from './render/assets';
 import { renderCard, resolveCardStyle } from './render/card';
+import { readPresenceSnapshot, SNAPSHOT_MAX_AGE_MS } from './storage/presence';
 
 const fixtures = new Map<string, unknown>([['playing', playing], ['online', online], ['offline', offline], ['unknown', error]]);
 const app = new Hono<{ Bindings: Bindings }>();
@@ -25,11 +26,29 @@ function svgResponse(svg: string, cacheControl = 'no-store'): Response {
 
 app.get('/card.svg', async (c) => {
   const style = resolveCardStyle(c.req.query('style'));
+  const fixture = fixtures.get(c.env?.PREVIEW_STATUS ?? '');
+  const kv = c.env?.PRESENCE_KV;
+  if (kv) {
+    if (fixture !== undefined) {
+      return svgResponse(renderCard(normalizePresence(fixture, new Date().toISOString()), undefined, style));
+    }
+    try {
+      const snapshot = await readPresenceSnapshot(kv);
+      if (snapshot) {
+        const remainingSeconds = Math.floor((Date.parse(snapshot.refreshedAt) + SNAPSHOT_MAX_AGE_MS - Date.now()) / 1000);
+        const cacheSeconds = Math.max(0, Math.min(CACHE_SECONDS, remainingSeconds));
+        return svgResponse(renderCard(snapshot.presence, snapshot.assets, style), 'public, max-age=' + cacheSeconds);
+      }
+    } catch {
+      console.warn('presence_kv_unavailable');
+    }
+    return svgResponse(renderCard(normalizePresence(error, new Date().toISOString()), undefined, style));
+  }
+
   let source: string | undefined;
   try {
     const provider = createPresenceProvider(c.env);
     if (!provider) {
-      const fixture = fixtures.get(c.env?.PREVIEW_STATUS ?? '');
       return svgResponse(renderCard(normalizePresence(fixture, new Date().toISOString()), undefined, style));
     }
     source = provider.source;
