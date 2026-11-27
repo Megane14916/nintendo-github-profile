@@ -16,17 +16,17 @@ export function renderDefaultCard(presence: GamePresence, assets: CardAssets, th
   const { padding, background, statusBackground, placeholder, text, muted } = theme;
   const x = padding + ART_SIZE + ART_GAP;
   const textWidth = WIDTH - x - padding;
-  const { status, heading, playTime, recent, language, description } = copy;
+  const { status, heading, playTime, recentLine, language, description } = copy;
   const offline = presence.status === 'offline';
   const titleSize = offline ? 22 : theme.titleSize;
   const accent = theme.status[presence.status];
   const title = heading && escapeXml(shorten(heading, textWidth, titleSize));
   const statusY = title ? padding : 66;
   const statusWidth = status.length * theme.labelSize + 36;
-  const recentTitle = recent && escapeXml(shorten(recent.title, textWidth, 18));
+  const detail = playTime ?? (recentLine && shorten(recentLine, textWidth, theme.detailSize));
 
   const avatarX = x;
-  const avatarY = recent ? 144 : 128;
+  const avatarY = 128;
   const avatarCenterX = avatarX + AVATAR_SIZE / 2;
   const avatarCenterY = avatarY + AVATAR_SIZE / 2;
   const nameX = avatarX + AVATAR_SIZE + 9;
@@ -53,7 +53,7 @@ export function renderDefaultCard(presence: GamePresence, assets: CardAssets, th
         </g>`
       : '';
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xml:lang="${language}" role="img" aria-labelledby="card-title">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xml:lang="${language}" font-weight="400" role="img" aria-labelledby="card-title">
   <title id="card-title">Nintendo Switch ${escapeXml(description)}</title>
   <defs>
     <clipPath id="art"><rect x="${padding}" y="${padding}" width="${ART_SIZE}" height="${ART_SIZE}" rx="${ART_RADIUS}"/></clipPath>
@@ -64,15 +64,13 @@ export function renderDefaultCard(presence: GamePresence, assets: CardAssets, th
   <rect x="${padding}" y="${padding}" width="${ART_SIZE}" height="${ART_SIZE}" rx="${ART_RADIUS}" fill="${placeholder}"/>
   ${art}
   ${avatar}
-  <g clip-path="url(#copy)" font-family="${theme.fontFamily}" stroke-width="0.32" stroke-linejoin="round">
+  <g clip-path="url(#copy)" font-family="${theme.fontFamily}">
     <rect x="${x}" y="${statusY}" width="${statusWidth}" height="${STATUS_HEIGHT}" rx="${STATUS_HEIGHT / 2}" fill="${statusBackground}"/>
     <circle cx="${x + 12}" cy="${statusY + STATUS_HEIGHT / 2}" r="3" fill="${accent}"/>
-    <text x="${x + 23}" y="${statusY + 18}" fill="${accent}" stroke="${accent}" font-size="${theme.labelSize}" font-weight="800">${status}</text>
-    ${title ? `<text x="${x}" y="${offline ? 80 : 85}" fill="${text}" stroke="${text}" font-size="${titleSize}" font-weight="800">${title}</text>` : ''}
-    ${playTime ? `<text x="${x}" y="109" fill="${muted}" stroke="${muted}" font-size="${theme.detailSize}" font-weight="500">${playTime}</text>` : ''}
-    ${recent ? `<text x="${x}" y="104" fill="${muted}" stroke="${muted}" font-size="${theme.labelSize}" font-weight="500">${recent.label}</text>
-    <text x="${x}" y="132" fill="${text}" stroke="${text}" font-size="18" font-weight="700">${recentTitle}</text>` : ''}
-    ${name ? `<text x="${nameX}" y="${avatarY + 17}" fill="${muted}" stroke="${muted}" font-size="${theme.detailSize}" font-weight="500">${name}</text>` : ''}
+    <text x="${x + 23}" y="${statusY + 18}" fill="${accent}" font-size="${theme.labelSize}">${status}</text>
+    ${title ? `<text x="${x}" y="${offline ? 80 : 85}" fill="${text}" font-size="${titleSize}">${title}</text>` : ''}
+    ${detail ? `<text x="${x}" y="109" fill="${muted}" font-size="${theme.detailSize}">${escapeXml(detail)}</text>` : ''}
+    ${name ? `<text x="${nameX}" y="${avatarY + 17}" fill="${muted}" font-size="${theme.detailSize}">${name}</text>` : ''}
   </g>
 </svg>`;
 }

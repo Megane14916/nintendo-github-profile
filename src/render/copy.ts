@@ -46,7 +46,7 @@ export function getCardCopy(presence: GamePresence, { language = 'ja', lastPlaye
   const recent = state === 'offline' && lastPlayed
     ? { label: copy.recent, title: lastPlayed.titles?.[language] ?? lastPlayed.title }
     : null;
-  const recentLine = recent ? recent.label + copy.separator + recent.title : null;
+  const recentLine = recent ? recent.label + ': ' + recent.title : null;
   const duration = minutes ? minutes + copy.minutesSuffix : null;
 
   return {

@@ -135,7 +135,7 @@ describe('KV presence cards', () => {
     });
     expect(stored.presence.game).toBeNull();
     const svg = await (await app.request('/card.svg?lang=en', {}, env)).text();
-    for (const text of ['Offline', 'No game in progress', 'Recently played', 'Splatoon™ 3']) {
+    for (const text of ['Offline', 'No game in progress', 'Recently played: Splatoon™ 3']) {
       expect(svg).toContain('>' + text + '</text>');
     }
     expect(fetch).toHaveBeenCalledTimes(11);

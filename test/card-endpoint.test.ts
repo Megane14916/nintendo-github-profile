@@ -69,7 +69,7 @@ describe('GET /card.svg', () => {
   });
 
   it.each([
-    ['green', 'fill="#14643C" stroke="#14643C"'],
+    ['green', 'fill="#14643C" font-size="13">オンライン</text>'],
     ['profile', '<text x="55" y="37"'],
     ['editorial', 'font-family="Noto Serif JP,'],
   ])('renders the selected %s design', async (style, marker) => {
@@ -102,6 +102,8 @@ describe('GET /card.svg', () => {
       for (const svg of cards) {
         expect(svg).toContain('<rect width="600" height="180" rx="18" fill="#E4000F"/>');
         expect(svg).toContain('>' + label + '</text>');
+        expect(svg.match(/\bfont-weight="[^"]+"/g)).toEqual(['font-weight="400"']);
+        expect(svg).not.toMatch(/<text\b[^>]*\bstroke=/);
       }
     }
   });
@@ -122,6 +124,8 @@ describe('GET /card.svg', () => {
         const svg = await response.text();
         expect(svg).toContain('<rect width="600" height="180" rx="18" fill="#E4000F"/>');
         expect(svg).toContain('>' + label + '</text>');
+        expect(svg.match(/\bfont-weight="[^"]+"/g)).toEqual(['font-weight="400"']);
+        expect(svg).not.toMatch(/<text\b[^>]*\bstroke=/);
         return svg;
       }));
       expect(new Set(cards).size).toBe(24);

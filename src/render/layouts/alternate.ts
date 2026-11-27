@@ -56,7 +56,7 @@ export function renderAlternateCard(
         </g>`
       : '';
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xml:lang="${language}" role="img" aria-labelledby="card-title">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xml:lang="${language}" font-weight="400" role="img" aria-labelledby="card-title">
   <title id="card-title">Nintendo Switch ${escapeXml(description)}</title>
   <defs>
     <clipPath id="art"><rect x="${art.x}" y="${art.y}" width="${art.size}" height="${art.size}" rx="${theme.artworkRadius}"/></clipPath>
@@ -70,16 +70,16 @@ export function renderAlternateCard(
   <rect x="${art.x}" y="${art.y}" width="${art.size}" height="${art.size}" rx="${theme.artworkRadius}" fill="${placeholder}"/>
   ${image}
   ${avatar}
-  <g font-family="${theme.fontFamily}" stroke-width="0.25" stroke-linejoin="round">
+  <g font-family="${theme.fontFamily}">
     <rect x="${badgeX}" y="${badge.y}" width="${badgeWidth}" height="${BADGE_HEIGHT}" rx="${theme.badgeRadius}" fill="${statusBackground}"/>
     <circle cx="${badgeX + 11}" cy="${badge.y + BADGE_HEIGHT / 2}" r="3" fill="${accent}"/>
-    <text x="${badgeX + 22}" y="${badge.y + 17}" fill="${accent}" stroke="${accent}" font-size="${theme.labelSize}" font-weight="700">${status}</text>
+    <text x="${badgeX + 22}" y="${badge.y + 17}" fill="${accent}" font-size="${theme.labelSize}">${status}</text>
     <g clip-path="url(#summary)" text-anchor="${summaryAnchor}">
-      ${title ? `<text x="${summary.x}" y="${summary.titleY}" fill="${text}" stroke="${text}" font-size="${titleSize}" font-weight="${theme.titleWeight}">${title}</text>` : ''}
-      ${detail ? `<text x="${summary.x}" y="${summary.timeY}" fill="${muted}" stroke="${muted}" font-size="${theme.detailSize}" font-weight="500">${escapeXml(detail)}</text>` : ''}
+      ${title ? `<text x="${summary.x}" y="${summary.titleY}" fill="${text}" font-size="${titleSize}">${title}</text>` : ''}
+      ${detail ? `<text x="${summary.x}" y="${summary.timeY}" fill="${muted}" font-size="${theme.detailSize}">${escapeXml(detail)}</text>` : ''}
     </g>
-    ${name ? `<text x="${nameX}" y="${nameY}" fill="${muted}" stroke="${muted}" text-anchor="${nameAnchor}"
-      font-size="${theme.detailSize}" font-weight="600" clip-path="url(#profile)">${name}</text>` : ''}
+    ${name ? `<text x="${nameX}" y="${nameY}" fill="${muted}" text-anchor="${nameAnchor}"
+      font-size="${theme.detailSize}" clip-path="url(#profile)">${name}</text>` : ''}
   </g>
 </svg>`;
 }

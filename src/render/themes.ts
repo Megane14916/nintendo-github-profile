@@ -44,7 +44,6 @@ export const greenTheme: CardTheme = {
 export interface RedTreatment extends CardTheme {
   artworkRadius: number;
   badgeRadius: number;
-  titleWeight: number;
 }
 
 export const redTreatments = {
@@ -52,7 +51,6 @@ export const redTreatments = {
     ...switchTheme,
     artworkRadius: 12,
     badgeRadius: 12.5,
-    titleWeight: 800,
   },
   mint: {
     ...greenTheme,
@@ -62,7 +60,6 @@ export const redTreatments = {
     titleSize: 27,
     artworkRadius: 20,
     badgeRadius: 6,
-    titleWeight: 750,
   },
   serif: {
     ...switchTheme,
@@ -81,6 +78,5 @@ export const redTreatments = {
     detailSize: 14,
     artworkRadius: 5,
     badgeRadius: 3,
-    titleWeight: 700,
   },
 } satisfies Record<string, RedTreatment>;

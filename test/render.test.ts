@@ -21,18 +21,19 @@ describe('renderCard', () => {
     expect(svg).toContain('<rect width="600" height="180" rx="11" fill="#E4000F"/>');
     expect(svg).toContain('<clipPath id="art"><rect x="22" y="22" width="136" height="136" rx="7"/>');
     expect(svg).toContain('xml:lang="ja"');
+    expect(svg.match(/\bfont-weight="[^"]+"/g)).toEqual(['font-weight="400"']);
+    expect(svg).not.toMatch(/<text\b[^>]*\bstroke=/);
     expect(svg).toContain('font-family="Noto Sans JP,');
     expect(svg).toMatch(/<\/svg>$/);
   });
 
-  it('places the offline badge at the same height as the playing badge and adds the latest title underneath', () => {
+  it('places the offline badge at the top and shows the latest game on the play-time row', () => {
     const svg = renderCard(normalizePresence(offline, fetchedAt), undefined, 'default', {
       lastPlayed: { title: 'Starlight Trails', seenAt: fetchedAt },
     });
     expect(svg).toContain('<rect x="180" y="22" width="101" height="26"');
     expect(svg).toMatch(/<text x="180" y="80"[^>]*>プレイ中のゲームはありません<\/text>/);
-    expect(svg).toMatch(/<text x="180" y="104"[^>]*>最近プレイしたゲーム<\/text>/);
-    expect(svg).toMatch(/<text x="180" y="132"[^>]*>Starlight Trails<\/text>/);
+    expect(svg).toMatch(/<text x="180" y="109"[^>]*font-size="15">最近プレイしたゲーム: Starlight Trails<\/text>/);
   });
 
   it('places a default profile icon to the left of the name when the avatar is missing', () => {

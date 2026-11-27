@@ -19,7 +19,6 @@ const fonts = {
 interface TextStyle {
   width: number;
   size?: number;
-  weight?: number;
   color?: string;
   face?: keyof typeof fonts;
   align?: 'middle' | 'end';
@@ -58,13 +57,12 @@ export function renderConcept(presence: GamePresence, assets: CardAssets, draw: 
 
   function text(value: string | null, x: number, y: number, style: TextStyle): string {
     if (!value) return '';
-    const { width, size = 14, weight = 600, color = white, face = 'sans', align = 'start' } = style;
+    const { width, size = 14, color = white, face = 'sans', align = 'start' } = style;
     const visible = value === time ? fitCardDetail(copy, width, size) ?? value : shorten(value, width, size);
     const left = x - (align === 'middle' ? width / 2 : align === 'end' ? width : 0);
     const mask = clip(`<rect x="${left}" y="${y - size - 5}" width="${width}" height="${size + 13}"/>`);
     return `<text x="${x}" y="${y}" text-anchor="${align}" font-family="${escapeXml(fonts[face])}"
-      font-size="${size}" font-weight="${weight}" fill="${color}" stroke="${color}" stroke-width="0.22"
-      stroke-linejoin="round" ${mask}>${escapeXml(visible)}</text>`;
+      font-size="${size}" fill="${color}" ${mask}>${escapeXml(visible)}</text>`;
   }
 
   function art(x: number, y: number, width: number, height = width, radius = 12): string {
@@ -108,11 +106,11 @@ export function renderConcept(presence: GamePresence, assets: CardAssets, draw: 
 
     return `<rect x="${left}" y="${y}" width="${width}" height="24" rx="${radius}" fill="${background}"/>
       <circle cx="${left + 11}" cy="${y + 12}" r="2.8" fill="${color}"/>
-      ${text(status, left + 21, y + 16, { width: width - 13, size: 12, weight: 800, color })}`;
+      ${text(status, left + 21, y + 16, { width: width - 13, size: 12, color })}`;
   }
 
   const body = draw({ title, time, minutes, minutesSuffix, playTimeLabel, recent, name, status, text, art, avatar, profile, pill });
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="180" viewBox="0 0 600 180" xml:lang="${language}" role="img" aria-labelledby="card-title">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="180" viewBox="0 0 600 180" xml:lang="${language}" font-weight="400" role="img" aria-labelledby="card-title">
   <title id="card-title">Nintendo Switch ${escapeXml(description)}</title>
   <defs>${defs.join('')}</defs>
   <rect width="600" height="180" rx="18" fill="${switchTheme.background}"/>
