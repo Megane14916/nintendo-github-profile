@@ -4,7 +4,7 @@ Nintendo Switch のオンライン状態やプレイ中のゲームを、GitHub 
 
 - カードの掲載例 [Megane14916 の GitHub プロフィール](https://github.com/Megane14916)
 
-![Nintendo Switch プレイ状況のカード例](https://nintendo-github-presence.yoanz.workers.dev/card.svg?style=orbit)
+![Nintendo Switch プレイ状況のカード例](https://nintendo-github-presence.yoanz.workers.dev/card.svg?style=default)
 
 ## 使用技術
 
@@ -87,7 +87,7 @@ npx wrangler deploy --secrets-file .env.production.json
 デプロイ後、Cron の初回更新を待ち、発行された URL をプロフィール README に画像として貼ります。デザインは `style` で選べます。
 
 ```md
-![Nintendo Switch Activity](https://<worker-domain>/card.svg?style=orbit)
+![Nintendo Switch Activity](https://<worker-domain>/card.svg?style=default)
 ```
 
 最後の正常更新から10分経つと「状態を取得できません」と表示します。GitHub 上の表示は画像キャッシュで遅れる場合があります。
