@@ -264,13 +264,13 @@ nxapi nso presence --friend-nsaid <MAIN_NSA_ID>
 
 **目的：データ更新とHTTP表示を分離し、ユーザーがアクセスしなくても定期的に最新状態を保存する。**
 
-- [ ] `jobs/refresh-presence.ts`にProvider取得→正規化→画像取得→KV保存の処理を集約する。
-- [ ] `worker.ts`に`fetch`と`scheduled`を追加し、既存Honoアプリを`fetch`から呼ぶ。
-- [ ] `wrangler.jsonc`の`main`を`src/worker.ts`に変更する。
-- [ ] `wrangler.jsonc`に`"triggers": { "crons": ["*/2 * * * *"] }`を追加する。CronはUTC基準で動く。
-- [ ] `GET /card.svg`はKVを読み、デザインを選んでSVGを返すだけにする。**HTTPアクセス時にはNintendo認証を実行しない。**
-- [ ] 取得成功・失敗、KV読み書き、欠損画像、連続失敗時の挙動を確認する。
-- [ ] Cronの重複・遅延実行があっても、同じ1キーに無駄な並列更新をしないようにする。必要になった場合のみ制御を追加する。
+- [x] `jobs/refresh-presence.ts`にProvider取得→正規化→画像取得→KV保存の処理を集約する。
+- [x] `worker.ts`に`fetch`と`scheduled`を追加し、既存Honoアプリを`fetch`から呼ぶ。
+- [x] `src/worker.ts` をバンドルし、`wrangler.jsonc` の `main` に出力先を指定する。
+- [x] `wrangler.jsonc`に`"triggers": { "crons": ["*/2 * * * *"] }`を追加する。CronはUTC基準で動く。
+- [x] `GET /card.svg`はKVを読み、デザインを選んでSVGを返すだけにする。**HTTPアクセス時にはNintendo認証を実行しない。**
+- [x] 取得成功・失敗、KV読み書き、欠損画像、連続失敗時の挙動を確認する。
+- [x] KV の最終更新時刻で処理済みの Cron を判定し、同一 Worker インスタンス内で実行中の更新との重複を防ぐ。
 - [ ] KVの無料枠とWorkersのCPU時間・サブリクエスト制限を計測する。無料枠で厳しければ頻度を調整する。
 
 入口のイメージ：
@@ -293,9 +293,11 @@ export default {
 ### Phase 3の完了条件
 
 - [ ] 本番環境で2分間隔の定期取得・KV更新が継続する。
-- [ ] GitHubからの画像アクセスがなくてもKVが更新される。
-- [ ] `/card.svg?style=...`がKVの同じデータから各デザインを描画できる。
-- [ ] エラーがあっても無限リトライせず、秘密情報を出力しない。
+- [x] 画像アクセスに先行してローカル Cron が KV を更新する。
+- [x] `/card.svg?style=...`がKVの同じデータから各デザインを描画できる。
+- [x] エラーがあっても無限リトライせず、秘密情報を出力しない。
+
+2026-11-27 に Wrangler のローカル Cron を発火させ、実 API のデータを KV に保存し、2種類のデザインで描画した。モックのローカル Workers 検証では、認証と画像2件を含む初回更新の外部 HTTP リクエストは14件、同時刻の再実行とカード取得は0件だった。定期更新の KV 書き込みは正常更新1回につき1件で、2分間隔なら1日最大720件になる。本番の定期実行とCPU時間はデプロイ後に確認する。
 
 ## 9. Phase 4 — 本番公開・切り替え・運用
 

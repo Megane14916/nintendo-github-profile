@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "nintendo-github-presence",
-  "main": ".wrangler/worker/index.mjs",
+  "main": ".wrangler/worker/worker.mjs",
   "no_bundle": true,
   "build": {
     "command": "node scripts/build-worker.mjs",
@@ -15,6 +15,7 @@
     "NXAPI_AUTH_CLIENT_ID": ""
   },
   "kv_namespaces": [{ "binding": "PRESENCE_KV" }],
+  "triggers": { "crons": ["*/2 * * * *"] },
   "observability": {
     "enabled": true,
     "logs": { "enabled": true, "invocation_logs": false },

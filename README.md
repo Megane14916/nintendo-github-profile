@@ -98,6 +98,18 @@ npm run dev
 
 Wrangler はローカルの KV を自動作成します。本番への初回デプロイ時は、同じ設定からアカウントに KV 名前空間をプロビジョニングできます。[Wrangler の自動プロビジョニング](https://developers.cloudflare.com/workers/wrangler/configuration/#automatic-provisioning)
 
+### Cron 更新
+
+デプロイ後は Cloudflare Cron が2分ごとに状態と画像を取得し、同じ KV キーを更新します。ローカルで Cron を1回試すには、開発サーバーを起動し、別のターミナルから次の URL にアクセスします。[Cloudflare の Cron テスト手順](https://developers.cloudflare.com/workers/configuration/cron-triggers/#test-cron-triggers-locally)
+
+```sh
+npm run dev -- --test-scheduled
+# 別のターミナルで実行
+curl "http://localhost:8787/cdn-cgi/local/scheduled?format=json"
+```
+
+結果の `outcome` が `ok` なら [ローカルのカード](http://localhost:8787/card.svg) を開きます。更新に失敗した場合は Worker ログの `presence_refresh_failed` に失敗した処理が表示されます。次の定期実行で再度取得します。
+
 公開後は、プロフィール README の画像 URL に Worker の URL を指定します。
 
 ```md
@@ -110,6 +122,7 @@ Wrangler はローカルの KV を自動作成します。本番への初回デ�
 
 - `src/presence/provider.ts` が取得元を選び、`src/presence/normalize.ts` がフレンドのデータを内部モデルに変換します。
 - `src/nintendo/` がサブアカウントで認証し、指定したフレンドの状態を取得します。短期トークンは Worker 内のメモリで再利用します。
+- `src/worker.ts` が HTTP と Cron を受け取り、`src/jobs/refresh-presence.ts` が定期更新と手動更新の処理を共通化します。
 - `scripts/build-worker.mjs` が nxapi の Coral クライアントを Workers 向けにバンドルします。検証した nxapi プレリリースを固定し、公開設定の Coral 互換バージョンをリクエスト時に取得します。
 - `src/render/assets.ts` が許可された画像を取得してデータ URI に変換します。
 - `src/storage/presence.ts` がスナップショットを検証し、KV の `presence:current` で読み書きします。

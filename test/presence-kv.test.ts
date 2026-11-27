@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import playing from '../fixtures/playing.json';
 import app from '../src/index';
-import { refreshPresence } from '../src/presence/refresh';
+import { refreshPresence } from '../src/jobs/refresh-presence';
 import { PRESENCE_KEY, SNAPSHOT_MAX_AGE_MS, type PresenceSnapshot } from '../src/storage/presence';
+import { memoryKv } from './helpers/memory-kv';
 
 const now = Date.parse('2026-11-27T08:00:00.000Z');
 const endpoint = 'https://presence.example.invalid/json?key=private-presence-url';
@@ -22,17 +23,6 @@ function snapshot(age = 0): PresenceSnapshot {
     },
     assets: { avatarDataUri: dataUri, gameImageDataUri: dataUri },
     refreshedAt: new Date(now - age).toISOString(),
-  };
-}
-
-function memoryKv(value: string | null = null) {
-  const values = new Map(value === null ? [] : [[PRESENCE_KEY, value]]);
-  return {
-    get: vi.fn().mockImplementation(async (key: string) => values.get(key) ?? null),
-    put: vi.fn().mockImplementation(async (key: string, next: string) => { values.set(key, next); }),
-    getWithMetadata: vi.fn(),
-    list: vi.fn(),
-    delete: vi.fn(),
   };
 }
 
@@ -60,7 +50,9 @@ describe('KV presence cards', () => {
     vi.stubGlobal('fetch', fetch);
 
     await expect(refreshPresence(env)).resolves.toBe(new Date(now).toISOString());
-    expect(kv.put).toHaveBeenCalledExactlyOnceWith(PRESENCE_KEY, expect.any(String));
+    expect(kv.put).toHaveBeenCalledExactlyOnceWith(PRESENCE_KEY, expect.any(String), {
+      metadata: { refreshedAt: new Date(now).toISOString() },
+    });
     const stored = await kv.get(PRESENCE_KEY);
     expect(JSON.parse(stored)).toEqual(snapshot());
     expect(stored).not.toContain('private-presence-url');

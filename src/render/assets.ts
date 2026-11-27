@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { IMAGE_TIMEOUT_MS } from '../config';
 import type { GamePresence } from '../model/presence';
 import { readLimitedBody } from '../utils/read-limited-body';
@@ -42,11 +43,8 @@ async function loadImage(source: string | null, presenceOrigin: string | undefin
     const bytes = await readLimitedBody(response, maxBytes);
     if (bytes.length === 0) return null;
 
-    let binary = '';
-    for (let offset = 0; offset < bytes.length; offset += 8192) {
-      binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
-    }
-    return 'data:' + mime + ';base64,' + btoa(binary);
+    const encoded = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('base64');
+    return 'data:' + mime + ';base64,' + encoded;
   } catch {
     return null;
   }

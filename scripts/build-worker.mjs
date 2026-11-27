@@ -20,8 +20,8 @@ const refresh = process.argv.includes('--refresh');
 
 await build({
   absWorkingDir: root,
-  entryPoints: [refresh ? 'src/presence/refresh.ts' : 'src/index.ts'],
-  outfile: refresh ? '.wrangler/worker/refresh.mjs' : '.wrangler/worker/index.mjs',
+  entryPoints: [refresh ? 'src/jobs/refresh-presence.ts' : 'src/worker.ts'],
+  outfile: refresh ? '.wrangler/worker/refresh.mjs' : '.wrangler/worker/worker.mjs',
   bundle: true,
   format: 'esm',
   platform: 'neutral',

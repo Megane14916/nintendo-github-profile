@@ -67,6 +67,17 @@ export async function readPresenceSnapshot(kv: Pick<KVNamespace, 'get'>): Promis
   return age >= 0 && age < SNAPSHOT_MAX_AGE_MS ? snapshot : null;
 }
 
+export async function snapshotRefreshedSince(
+  kv: Pick<KVNamespace, 'getWithMetadata'>,
+  scheduledTime: number,
+): Promise<boolean> {
+  const { value, metadata } = await kv.getWithMetadata<{ refreshedAt?: string }>(PRESENCE_KEY, 'stream');
+  await value?.cancel();
+  if (!isTimestamp(metadata?.refreshedAt)) return false;
+  const refreshedAt = Date.parse(metadata.refreshedAt);
+  return refreshedAt >= scheduledTime && refreshedAt <= Date.now();
+}
+
 export async function writePresenceSnapshot(kv: Pick<KVNamespace, 'put'>, snapshot: PresenceSnapshot): Promise<void> {
   const { presence, assets } = snapshot;
   // The card only uses embedded images. Exclude image URLs and any upstream fields.
@@ -91,5 +102,5 @@ export async function writePresenceSnapshot(kv: Pick<KVNamespace, 'put'>, snapsh
   if (!isSnapshot(stored)) throw new Error('Invalid presence snapshot');
   const value = JSON.stringify(stored);
   if (new TextEncoder().encode(value).byteLength > MAX_KV_VALUE_BYTES) throw new Error('Presence snapshot exceeds KV value limit');
-  await kv.put(PRESENCE_KEY, value);
+  await kv.put(PRESENCE_KEY, value, { metadata: { refreshedAt: stored.refreshedAt } });
 }

@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import playing from '../fixtures/playing.json';
 import app from '../src/index';
-import { PRESENCE_TIMEOUT_MS } from '../src/config';
+import { PRESENCE_TIMEOUT_MS, type Bindings } from '../src/config';
+import { refreshPresence } from '../src/jobs/refresh-presence';
 import { concepts } from '../src/render/layouts/concepts';
 import { cardLayouts } from '../src/render/layouts/presets';
 import { redTreatments } from '../src/render/themes';
+import { memoryKv } from './helpers/memory-kv';
 
 const endpoint = 'https://presence.example.invalid/json?key=sample-secret';
 const env = { NXAPI_PRESENCE_URL: endpoint, PREVIEW_STATUS: '' };
@@ -23,6 +25,12 @@ function payload(imageUri: string, image2Uri?: string) {
       },
     },
   };
+}
+
+async function refreshCard(bindings: Bindings = env): Promise<Response> {
+  const kv = memoryKv();
+  await refreshPresence({ ...bindings, PRESENCE_KV: kv });
+  return app.request('/card.svg', {}, { PRESENCE_KV: kv });
 }
 
 afterEach(() => {
@@ -53,7 +61,7 @@ describe('GET /card.svg', () => {
     vi.stubGlobal('fetch', fetch);
 
     const response = await app.request('/card.svg?status=playing&url=https://example.invalid', {}, {
-      PREVIEW_STATUS: '',
+      ...env,
     });
     expect(await response.text()).toContain('状態を取得できません');
     expect(fetch).not.toHaveBeenCalled();
@@ -135,27 +143,23 @@ describe('GET /card.svg', () => {
     expect(await unrecognized.text()).toBe(await original.text());
   });
 
-  it('separates cached designs and ignores extra parameters in the cache key', async () => {
-    const cached = new Map<string, Response>();
-    vi.stubGlobal('caches', {
-      default: {
-        match: async (key: Request) => cached.get(new URL(key.url).search)?.clone(),
-        put: async (key: Request, value: Response) => { cached.set(new URL(key.url).search, value); },
-      },
-    });
+  it('renders different styles from the same KV snapshot and ignores extra parameters', async () => {
+    const kv = memoryKv();
     const fetch = vi.fn().mockImplementation(async () => Response.json(playing));
     vi.stubGlobal('fetch', fetch);
-    const context = { waitUntil: vi.fn(), passThroughOnException: vi.fn(), props: {} };
-
-    const original = await (await app.request('/card.svg', {}, env, context)).text();
-    const green = await (await app.request('/card.svg?style=green', {}, env, context)).text();
-    const repeated = await app.request('/card.svg?extra=1&style=green', {}, env, context);
+    await refreshPresence({ ...env, PRESENCE_KV: kv });
+    const bindings = { PRESENCE_KV: kv };
+    const original = await (await app.request('/card.svg', {}, bindings)).text();
+    const green = await (await app.request('/card.svg?style=green', {}, bindings)).text();
+    const repeated = await app.request('/card.svg?extra=1&style=green', {}, bindings);
     expect(green).not.toBe(original);
+    expect(green).toContain('Starlight Trails');
     expect(await repeated.text()).toBe(green);
-    expect([...cached.keys()]).toEqual(['', '?style=green']);
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
+});
 
+describe('refresh and render nxapi-auth data', () => {
   it('fetches presence and embeds both images when the secret is configured', async () => {
     const imageResponse = () => new Response(Uint8Array.from(atob(png), (char) => char.charCodeAt(0)), {
       headers: { 'Content-Type': 'image/png' },
@@ -165,7 +169,7 @@ describe('GET /card.svg', () => {
       .mockImplementation(imageResponse);
     vi.stubGlobal('fetch', fetch);
 
-    const response = await app.request('/card.svg', {}, { ...env, PREVIEW_STATUS: 'offline' });
+    const response = await refreshCard();
     const svg = await response.text();
     expect(response.headers.get('Cache-Control')).toBe('public, max-age=90');
     expect(fetch.mock.calls.map(([url]) => String(url))).toEqual([endpoint, avatar, gameImage]);
@@ -188,7 +192,7 @@ describe('GET /card.svg', () => {
       }));
     vi.stubGlobal('fetch', fetch);
 
-    const response = await app.request('/card.svg', {}, { ...env, PRESENCE_SOURCE: 'nxapi-auth' });
+    const response = await refreshCard({ ...env, PRESENCE_SOURCE: 'nxapi-auth' });
     expect(await response.text()).toContain('href="data:image/png;base64,' + png + '"');
     expect(fetch.mock.calls.map(([url]) => String(url))).toEqual([endpoint, proxyImage]);
   });
@@ -204,7 +208,7 @@ describe('GET /card.svg', () => {
       .mockImplementation(largeImage);
     vi.stubGlobal('fetch', fetch);
 
-    const svg = await (await app.request('/card.svg', {}, env)).text();
+    const svg = await (await refreshCard()).text();
     expect(svg.match(/<image /g)).toHaveLength(1);
     expect(svg).toMatch(/<image\b[^>]*href="data:image\/png;base64,[^"]+" clip-path="url\(#art\)"/);
     expect(fetch).toHaveBeenCalledTimes(3);
@@ -219,7 +223,12 @@ describe('GET /card.svg', () => {
     const fetch = vi.fn().mockResolvedValueOnce(upstream());
     vi.stubGlobal('fetch', fetch);
 
-    const response = await app.request('/card.svg', {}, env);
+    const kv = memoryKv();
+    const update = refreshPresence({ ...env, PRESENCE_KV: kv });
+    await expect(update).rejects.toThrow('presence:');
+    await expect(update).rejects.not.toThrow('sample-secret');
+    expect(kv.put).not.toHaveBeenCalled();
+    const response = await app.request('/card.svg', {}, { PRESENCE_KV: kv });
     const svg = await response.text();
     expect(response.status).toBe(200);
     expect(response.headers.get('Cache-Control')).toBe('no-store');
@@ -238,8 +247,9 @@ describe('GET /card.svg', () => {
     );
     vi.stubGlobal('fetch', fetch);
 
-    const response = await app.request('/card.svg', {}, env);
-    expect(await response.text()).toContain('状態を取得できません');
+    const kv = memoryKv();
+    await expect(refreshPresence({ ...env, PRESENCE_KV: kv })).rejects.toThrow('presence: request-failed');
+    expect(kv.put).not.toHaveBeenCalled();
     expect(timeout).toHaveBeenCalledWith(PRESENCE_TIMEOUT_MS);
     expect(fetch).toHaveBeenCalledTimes(1);
   });
@@ -254,7 +264,7 @@ describe('GET /card.svg', () => {
     const fetch = vi.fn().mockResolvedValueOnce(Response.json(payload(url)));
     vi.stubGlobal('fetch', fetch);
 
-    const svg = await (await app.request('/card.svg', {}, env)).text();
+    const svg = await (await refreshCard()).text();
     expect(svg).toContain('オンライン');
     expect(svg).not.toContain('<image ');
     expect(fetch).toHaveBeenCalledTimes(1);
@@ -274,7 +284,7 @@ describe('GET /card.svg', () => {
       .mockResolvedValueOnce(imageResponse());
     vi.stubGlobal('fetch', fetch);
 
-    const svg = await (await app.request('/card.svg', {}, env)).text();
+    const svg = await (await refreshCard()).text();
     expect(svg).toContain('オンライン');
     expect(svg).not.toContain('<image ');
     expect(fetch).toHaveBeenCalledTimes(2);
