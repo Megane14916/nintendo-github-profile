@@ -8,11 +8,10 @@
     "watch_dir": ["src", "fixtures", "scripts"]
   },
   "compatibility_date": "2026-11-24",
+  "workers_dev": true,
   "vars": {
     "PREVIEW_STATUS": "",
-    "PRESENCE_SOURCE": "",
-    "MAIN_NSA_ID": "",
-    "NXAPI_AUTH_CLIENT_ID": ""
+    "PRESENCE_SOURCE": "self"
   },
   "kv_namespaces": [{ "binding": "PRESENCE_KV" }],
   "triggers": { "crons": ["*/2 * * * *"] },

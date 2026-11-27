@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
+import playingFixture from '../fixtures/playing.json';
 import app from '../src/index';
 import { memoryKv } from './helpers/memory-kv';
 import { mockNintendo, nintendoEnv } from './helpers/nintendo-upstream.mjs';
@@ -105,4 +106,27 @@ it('embeds a Nintendo CDN image and skips the JSON provider proxy in self mode',
   expect(svg.match(/<image /g)).toHaveLength(1);
   expect(svg).toContain('href="data:image/png;base64,' + png.toString('base64') + '"');
   expect(fetch.mock.calls.some(([request]) => request.url.startsWith(proxyOrigin))).toBe(false);
+});
+
+it('switches providers while rendering the same card URL from the same KV binding', async () => {
+  const kv = memoryKv();
+  const direct = { ...nintendoEnv, PRESENCE_KV: kv };
+  mockFetch(mockNintendo());
+  await refreshPresence(direct);
+  const cardUrl = '/card.svg?style=orbit';
+  expect(await (await app.request(cardUrl, {}, { PRESENCE_KV: kv })).text()).toContain('Coral Test Game');
+
+  const endpoint = 'https://presence.example.invalid/json?key=private-url';
+  const fetch = vi.fn().mockResolvedValue(Response.json(playingFixture));
+  vi.stubGlobal('fetch', fetch);
+  await refreshPresence({ ...direct, PRESENCE_SOURCE: 'nxapi-auth', NXAPI_PRESENCE_URL: endpoint });
+  expect(String(fetch.mock.calls[0][0])).toBe(endpoint);
+  fetch.mockClear();
+
+  const svg = await (await app.request(cardUrl, {}, { PRESENCE_KV: kv })).text();
+  expect(svg).toContain('Starlight Trails');
+  expect(svg).not.toContain('Coral Test Game');
+  expect(svg).not.toContain('private-url');
+  expect(fetch).not.toHaveBeenCalled();
+  expect(kv.put.mock.calls.map(([key]) => key)).toEqual(['presence:current', 'presence:current']);
 });

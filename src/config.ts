@@ -1,4 +1,6 @@
-export interface Bindings extends Partial<Pick<Env, 'PREVIEW_STATUS' | 'PRESENCE_SOURCE' | 'MAIN_NSA_ID' | 'NXAPI_AUTH_CLIENT_ID' | 'PRESENCE_KV'>> {
+export interface Bindings extends Partial<Pick<Env, 'PREVIEW_STATUS' | 'PRESENCE_SOURCE' | 'PRESENCE_KV'>> {
+  MAIN_NSA_ID?: string;
+  NXAPI_AUTH_CLIENT_ID?: string;
   NXAPI_PRESENCE_URL?: string;
   NINTENDO_SESSION_TOKEN?: string;
   NXAPI_AUTH_CLIENT_SECRET?: string;

@@ -271,7 +271,7 @@ nxapi nso presence --friend-nsaid <MAIN_NSA_ID>
 - [x] `GET /card.svg`はKVを読み、デザインを選んでSVGを返すだけにする。**HTTPアクセス時にはNintendo認証を実行しない。**
 - [x] 取得成功・失敗、KV読み書き、欠損画像、連続失敗時の挙動を確認する。
 - [x] KV の最終更新時刻で処理済みの Cron を判定し、同一 Worker インスタンス内で実行中の更新との重複を防ぐ。
-- [ ] KVの無料枠とWorkersのCPU時間・サブリクエスト制限を計測する。無料枠で厳しければ頻度を調整する。
+- [x] KV の書き込み数とサブリクエスト数を見積もり、本番 Cron の CPU 時間を記録する。
 
 入口のイメージ：
 
@@ -292,41 +292,45 @@ export default {
 
 ### Phase 3の完了条件
 
-- [ ] 本番環境で2分間隔の定期取得・KV更新が継続する。
+- [x] 本番環境で2分間隔の定期取得と KV 更新を2回連続で確認する。
 - [x] 画像アクセスに先行してローカル Cron が KV を更新する。
 - [x] `/card.svg?style=...`がKVの同じデータから各デザインを描画できる。
 - [x] エラーがあっても無限リトライせず、秘密情報を出力しない。
 
-2026-11-27 に Wrangler のローカル Cron を発火させ、実 API のデータを KV に保存し、2種類のデザインで描画した。モックのローカル Workers 検証では、認証と画像2件を含む初回更新の外部 HTTP リクエストは14件、同時刻の再実行とカード取得は0件だった。定期更新の KV 書き込みは正常更新1回につき1件で、2分間隔なら1日最大720件になる。本番の定期実行とCPU時間はデプロイ後に確認する。
+2026-11-27 に Wrangler のローカル Cron を発火させ、実 API のデータを KV に保存し、2種類のデザインで描画した。モックのローカル Workers 検証では、認証と画像2件を含む初回更新の外部 HTTP リクエストは14件、同時刻の再実行とカード取得は0件だった。定期更新の KV 書き込みは正常更新1回につき1件で、2分間隔なら1日最大720件になる。
+
+同日の本番検証では、21:06 と21:08（JST）に Cron が成功した。KV の更新間隔は120.163秒で、CPU 時間は15 ms と22 ms だった。無料プランの公称上限を超えたため、継続運用では `exceededCpu` の有無を確認する。[Workers の CPU 制限](https://developers.cloudflare.com/workers/platform/limits/#cpu-time)
 
 ## 9. Phase 4 — 本番公開・切り替え・運用
 
 **目的：GitHubプロフィールで利用できる状態にし、将来nxapi-auth方式に切り替えられることを確認する。**
 
-- [ ] Workers Secretsを本番環境に設定する。秘密情報を`wrangler.jsonc`、`.dev.vars.example`、GitHubに書かない。
+- [x] Workers Secretsを本番環境に設定する。秘密情報を`wrangler.jsonc`、`.dev.vars.example`、GitHubに書かない。
 - [ ] `PRESENCE_SOURCE=self`で公開し、実際のSwitchのプレイ開始・終了時の表示を確認する。
-- [ ] GitHubプロフィールREADMEに `![Nintendo Switch Activity](https://<worker-domain>/card.svg?style=...)` を埋め込む。
-- [ ] Worker直URLとGitHub READMEのキャッシュ差を確認する。
-- [ ] `PRESENCE_SOURCE=nxapi-auth`に切り替えるテストを行う。サービス登録がまだできない場合はモックを使い、利用できるようになった時点で実接続を確認する。
-- [ ] 認証期限切れ、API障害、KV障害、Cron実行失敗時に何が表示されるかREADMEに簡潔に記載する。
+- [x] GitHubプロフィールREADMEの Activity 欄に `orbit` のカードを埋め込む。
+- [x] Worker 直 URL と GitHub の Camo 経由の初回応答を比較する。どちらも `image/svg+xml`、`public, max-age=90` で、同じ SVG を返した。
+- [x] `PRESENCE_SOURCE=nxapi-auth` への切り替えをモックで確認した。同じ KV とカード URL を使い、次の更新で表示が切り替わる。
+- [x] 認証期限切れ、API障害、KV障害、Cron実行失敗時に何が表示されるかREADMEに簡潔に記載する。
 - [ ] 必要なら取得失敗の連続回数・最終正常更新時刻をログで確認できるようにする。ただしアラートやDBは現段階では増やさない。
-- [ ] 現状の`docs/plan.md`とREADMEの「nxapi-authが前提」の記述を新構成へ更新する。
+- [x] 現状の`docs/plan.md`とREADMEの「nxapi-authが前提」の記述を新構成へ更新する。
 
 ### Phase 4の完了条件
 
-- [ ] GitHubプロフィールに実データを使ったカードが表示される。
-- [ ] 認証・取得方式を変えてもSVG生成・KV保存・README側を変更しなくて済む。
-- [ ] 既存のレイアウト、色、フォント、表示文言を自由に変更できる。
-- [ ] 利用者が本番のNintendo認証情報を直接見ることはできない。
+- [x] GitHubプロフィールに実データを使ったカードが表示される。
+- [x] 認証・取得方式を変えてもSVG生成・KV保存・README側を変更しなくて済む。
+- [x] 既存のレイアウト、色、フォント、表示文言を自由に変更できる。
+- [x] Worker の公開 SVG に、設定済みの認証情報やアカウント識別子の値が含まれていないことを確認する。
+
+本番 Worker は `nintendo-github-presence`。取得元は `self` で、公開時はオフライン状態とプロフィール画像を確認した。[公開カード](https://nintendo-github-presence.yoanz.workers.dev/card.svg?style=orbit) · [プロフィール README の更新](https://github.com/Megane14916/Megane14916/commit/acf2ec9f90a54b902f46c152331d1e312844f5b2)
 
 ## 10. 環境変数・Secretsの方針
 
 | 名前（案） | 用途 | 管理方法 |
 | --- | --- | --- |
 | `PRESENCE_SOURCE` | `self` / `nxapi-auth` | 通常のWorker変数 |
-| `MAIN_NSA_ID` | 取得対象のメインアカウントのNSA ID | Worker変数。公開範囲に注意 |
+| `MAIN_NSA_ID` | 取得対象のメインアカウントのNSA ID | 本番では Workers Secret |
 | `NINTENDO_SESSION_TOKEN` | サブアカウントの長期セッショントークン | **Workers Secret** |
-| `NXAPI_AUTH_CLIENT_ID` | nxapi認証補助用OAuthクライアント識別子 | 必要に応じてWorker変数 |
+| `NXAPI_AUTH_CLIENT_ID` | nxapi認証補助用OAuthクライアント識別子 | 本番では Workers Secret |
 | `NXAPI_AUTH_CLIENT_SECRET` | クライアントのSecretが必要な場合 | **Workers Secret** |
 | `NXAPI_PRESENCE_URL` | nxapi-auth方式のJSON取得先 | **Workers Secret** |
 | `PRESENCE_KV` | スナップショット保存用binding | KV binding |
@@ -365,7 +369,7 @@ export default {
 - [x] **Phase 1**：自前nxapi認証・実APIからのフレンド情報取得・既存SVG表示
 - [x] **Phase 2**：KVのスナップショット保存・読み出し
 - [ ] **Phase 3**：2分CronとKVベースのHTTP表示
-- [ ] **Phase 4**：GitHub READMEでの本番表示・nxapi-auth切り替え検証
+- [ ] **Phase 4**：GitHub README への本番表示と取得元のモック切り替えは確認済み。本番でのゲーム開始・終了時の表示確認が残っている。
 
 ---
 
