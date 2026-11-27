@@ -207,32 +207,36 @@ nxapi nso presence --friend-nsaid <MAIN_NSA_ID>
 
 ### 1-2. Workers上でnxapiを使えるか検証
 
-- [ ] `nxapi`ライブラリの依存関係を確認し、Wranglerでビルドできるか検証する。
-- [ ] 必要なNode.js互換設定やAPIへの対応を確認する。**CLIをWorker内で実行しない。**
-- [ ] `src/nintendo/auth.ts`を作成し、サブアカウントの長期セッショントークンをWorkers Secretから読み込む。
-- [ ] 必要な短期トークンの生成・更新処理を実装する。Phase 1では永続キャッシュを必須にせず、単発の取得を通すことを優先する。
-- [ ] `src/nintendo/client.ts`を作成し、メインアカウントのフレンドPresenceを実際に取得する。
-- [ ] 実行環境の制約、Nintendo側エラー、外部認証補助サービスの失敗を切り分けられるログを用意する。
+- [x] `nxapi`ライブラリの依存関係を確認し、Wranglerでビルドできるか検証する。
+- [x] 必要なNode.js互換設定やAPIへの対応を確認する。**CLIをWorker内で実行しない。**
+- [x] `src/nintendo/auth.ts`を作成し、サブアカウントの長期セッショントークンをWorkers Secretから読み込む。
+- [x] 必要な短期トークンの生成・更新処理を実装する。Phase 1では永続キャッシュを必須にせず、単発の取得を通すことを優先する。
+- [x] `src/nintendo/client.ts`を作成し、メインアカウントのフレンドPresenceを実際に取得する。
+- [x] 実行環境の制約、Nintendo側エラー、外部認証補助サービスの失敗を切り分けられるログを用意する。
 
 > **注意：** nxapiのnpm CLIはローカルデータ保存や認証キャッシュを備えるが、ライブラリ使用時にそれらが自動的に使えるとは限らない。さらに、ライブラリでの認証補助サービス利用にはnxapi-authのクライアント登録が必要と公式READMEに記載されている。互換性と認証は未検証のため、成功を前提にコードを作り込まない。
 
 ### 1-3. Providerと既存レンダリングへ接続
 
-- [ ] `presence/providers/self.ts`を実装し、取得した実レスポンスを`GamePresence`へ変換する。
-- [ ] 既存の`src/presence/nxapi.ts`を`presence/providers/nxapi-auth.ts`へ移動し、HTTP取得処理を再利用する。
-- [ ] `presence/provider.ts`に`PRESENCE_SOURCE`で切り替える仕組みを追加する。
-- [ ] `src/index.ts`の`GET /card.svg`を、指定Providerからの取得→画像取得→`renderCard()`という経路につなぐ（**Phase 1限定の直接取得**）。
-- [ ] 既存の`PREVIEW_STATUS`によるfixtureプレビューとデザイン切り替えを壊さない。
+- [x] `presence/providers/self.ts`を実装し、取得した実レスポンスを`GamePresence`へ変換する。
+- [x] 既存の`src/presence/nxapi.ts`を`presence/providers/nxapi-auth.ts`へ移動し、HTTP取得処理を再利用する。
+- [x] `presence/provider.ts`に`PRESENCE_SOURCE`で切り替える仕組みを追加する。
+- [x] `src/index.ts`の`GET /card.svg`を、指定Providerからの取得→画像取得→`renderCard()`という経路につなぐ（**Phase 1限定の直接取得**）。
+- [x] 既存の`PREVIEW_STATUS`によるfixtureプレビューとデザイン切り替えを壊さない。
 - [ ] 実APIで`playing`、`online`、`offline`、取得失敗を検証する。画像・プレイ時間は公開設定や取得可能性に依存するので、欠損時も成立するようにする。
 
 ### Phase 1の完了条件
 
-- [ ] Workersローカル開発環境から、サブアカウントでメインアカウントの実際のPresenceを取得できる。
-- [ ] 実際のゲーム名・ステータスが`/card.svg`に反映される。
-- [ ] 画像が取得できればゲーム画像とアイコンを表示でき、失敗時もSVGが壊れない。
-- [ ] `PRESENCE_SOURCE`の切り替えが動作する（nxapi-auth側の実アカウントが使えない場合はHTTPのモックで確認）。
+2026-11-26 に nxapi `1.6.1-next.257` を使った Worker を実装した。Wrangler のビルドと、ローカルの workerd で認証・取得をモックした SVG 描画および短期トークンの更新を確認した。互換ヘッダー `X-znca-Compatible-Version: 3.5.0` 付きで nxapi の公開設定を取得できた。
+
+2026-11-27 にローカルの Workers 環境で、サブアカウントからメインアカウントの実際の Presence を取得した。`/card.svg` でオフライン時の状態とプロフィール画像、プレイ中のゲーム名（TETRIS 99）とゲーム画像を確認した。実測したゲーム画像は585,236バイトで、ゲーム画像の取得上限を1 MiBに調整した。ゲームを起動していないオンライン状態と取得失敗時の表示は、モックで確認した。
+
+- [x] Workersローカル開発環境から、サブアカウントでメインアカウントの実際のPresenceを取得できる。
+- [x] 実際のゲーム名・ステータスが`/card.svg`に反映される。
+- [x] 画像が取得できればゲーム画像とアイコンを表示でき、失敗時もSVGが壊れない。
+- [x] `PRESENCE_SOURCE`の切り替えが動作する（HTTPのモックで確認）。
 - [ ] 認証情報がレスポンス、SVG、ログ、Gitに漏れない。
-- [ ] `npm run check`と`npm test`が成功する。
+- [x] `npm run check`と`npm test`が成功する。
 
 **進行判定：** Worker上のnxapi利用が難しい場合は、問題を記録してこのPhaseを一旦止める。常時サーバーを増やす前に、GitHub Actionsによる5分程度の定期取得などへの切り替えを検討する。
 
@@ -354,7 +358,7 @@ export default {
 - [x] 既存のfixtureからSVGを生成できる
 - [x] デザインの切り替えとSVG描画テストがある
 - [x] nxapi-auth形式JSONのHTTP取得コードがある（実アカウント未接続）
-- [ ] **Phase 1**：自前nxapi認証・実APIからのフレンド情報取得・既存SVG表示
+- [x] **Phase 1**：自前nxapi認証・実APIからのフレンド情報取得・既存SVG表示
 - [ ] **Phase 2**：KVのスナップショット保存・読み出し
 - [ ] **Phase 3**：2分CronとKVベースのHTTP表示
 - [ ] **Phase 4**：GitHub READMEでの本番表示・nxapi-auth切り替え検証

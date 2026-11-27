@@ -62,7 +62,28 @@ npm test
 
 ## 実 API への接続
 
-nxapi-auth で取得した JSON 用 Presence URL を、`.dev.vars.example` をコピーした `.dev.vars` の `NXAPI_PRESENCE_URL` に設定して `npm run dev` を実行します。公開時は同じ名前の Worker Secret を設定します。URL は秘密情報として扱ってください。公開する前に nxapi-auth 側の公開範囲を確認してください。
+### 自前 nxapi
+
+1. Nintendo Switch 本体に連携したサブアカウントとメインアカウントをフレンドにし、メインアカウントのオンライン状態をサブアカウントに公開します。
+2. ローカルの nxapi CLI でサブアカウントを認証し、`npx --no-install nxapi nso friends` でメインアカウントの状態と **NSA ID** を確認します。CLI のローカルデータにある `NintendoAccountToken.<サブアカウントの Nintendo Account ID>` の値を使います。トークンや認証時の出力を共有しないでください。[nxapi CLI の認証手順](https://github.com/samuelthomas2774/nxapi/blob/main/docs/cli.md#login-to-the-nintendo-switch-online-app)
+3. nxapi-auth で `Public` の OAuth クライアントを登録し、`Client credentials` と `ca:gf ca:er ca:dr` の3つのスコープを有効にします。Coral 認証と通信の暗号化・復号には nxapi の認証補助サービスを使い、Nintendo が発行した短期トークンを同サービスへ送信します。[クライアント登録](https://nxapi-auth.fancy.org.uk/oauth/clients) · [Coral 認証の仕様](https://github.com/samuelthomas2774/nxapi#coral-client-authentication)
+4. `.dev.vars.example` を `.dev.vars` にコピーし、次の値を設定します。`npm run dev` で起動し、[ローカルのカード](http://localhost:8787/card.svg) を開きます。
+
+| 変数 | 設定値 |
+| --- | --- |
+| `PRESENCE_SOURCE` | `self` |
+| `MAIN_NSA_ID` | メインアカウントの NSA ID（16桁の16進数） |
+| `NINTENDO_SESSION_TOKEN` | サブアカウントの Nintendo セッショントークン |
+| `NXAPI_AUTH_CLIENT_ID` | 登録した OAuth クライアント ID |
+| `NXAPI_AUTH_CLIENT_SECRET` | 発行された場合に設定する OAuth クライアントシークレット |
+
+設定後、プレイ中、オンライン、オフラインでゲーム名や状態が変わることを確認できます。認証や取得に失敗すると、カードには「状態を取得できません」と表示されます。Worker の `presence_unavailable` ログには失敗した処理と分類が記録されます。
+
+### nxapi-auth の Presence API
+
+`PRESENCE_SOURCE=nxapi-auth` に変更し、取得した JSON 用 Presence URL を `NXAPI_PRESENCE_URL` に設定します。以前から `NXAPI_PRESENCE_URL` を利用している場合は、`PRESENCE_SOURCE` が空でも同じ接続が使えます。両方を空にすると `PREVIEW_STATUS` でサンプルを表示できます。
+
+公開時は `NINTENDO_SESSION_TOKEN`、`NXAPI_AUTH_CLIENT_SECRET`、`NXAPI_PRESENCE_URL` を、利用する取得元に応じて Worker Secret に設定します。ローカルの `.dev.vars` は Git の管理対象外です。
 
 公開後は、プロフィール README の画像 URL に Worker の URL を指定します。
 
@@ -74,7 +95,8 @@ nxapi-auth で取得した JSON 用 Presence URL を、`.dev.vars.example` を�
 
 ## 構成
 
-- `src/presence/nxapi.ts` が設定済みの URL から JSON を取得します。
-- `src/presence/normalize.ts` が [nxapi の公開実装](https://github.com/samuelthomas2774/nxapi/blob/main/src/cli/presence-server.ts) に沿ってデータを内部モデルに変換します。
+- `src/presence/provider.ts` が取得元を選び、`src/presence/normalize.ts` がフレンドのデータを内部モデルに変換します。
+- `src/nintendo/` がサブアカウントで認証し、指定したフレンドの状態を取得します。短期トークンは Worker 内のメモリで再利用します。
+- `scripts/build-worker.mjs` が nxapi の Coral クライアントを Workers 向けにバンドルします。検証した nxapi プレリリースを固定し、公開設定の Coral 互換バージョンをリクエスト時に取得します。
 - `src/render/assets.ts` が許可された画像を取得してデータ URI に変換します。
 - レイアウトは `src/render/layouts/`、配色と文字サイズは `src/render/themes.ts` で変更できます。

@@ -179,6 +179,37 @@ describe('GET /card.svg', () => {
     expect(svg).not.toContain('sample-secret');
   });
 
+  it('allows the configured nxapi-auth image proxy when explicitly selected', async () => {
+    const proxyImage = 'https://presence.example.invalid/api/presence/resources/atum/game.png';
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(Response.json(payload(proxyImage)))
+      .mockResolvedValueOnce(new Response(Uint8Array.from(atob(png), (char) => char.charCodeAt(0)), {
+        headers: { 'Content-Type': 'image/png' },
+      }));
+    vi.stubGlobal('fetch', fetch);
+
+    const response = await app.request('/card.svg', {}, { ...env, PRESENCE_SOURCE: 'nxapi-auth' });
+    expect(await response.text()).toContain('href="data:image/png;base64,' + png + '"');
+    expect(fetch.mock.calls.map(([url]) => String(url))).toEqual([endpoint, proxyImage]);
+  });
+
+  it('embeds a game image slightly larger than the avatar limit', async () => {
+    const bytes = new Uint8Array(585_236);
+    bytes.set(Uint8Array.from(atob(png), (char) => char.charCodeAt(0)));
+    const largeImage = () => new Response(bytes, {
+      headers: { 'Content-Type': 'image/png', 'Content-Length': String(bytes.length) },
+    });
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(Response.json(payload(gameImage, avatar)))
+      .mockImplementation(largeImage);
+    vi.stubGlobal('fetch', fetch);
+
+    const svg = await (await app.request('/card.svg', {}, env)).text();
+    expect(svg.match(/<image /g)).toHaveLength(1);
+    expect(svg).toMatch(/<image\b[^>]*href="data:image\/png;base64,[^"]+" clip-path="url\(#art\)"/);
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
   it.each([
     () => new Response(endpoint, { status: 503 }),
     () => Response.redirect('https://example.invalid/json'),
@@ -233,9 +264,9 @@ describe('GET /card.svg', () => {
     () => new Response('missing', { status: 404 }),
     () => Response.redirect('https://example.invalid/image.png'),
     () => new Response('<svg/>', { headers: { 'Content-Type': 'image/svg+xml' } }),
-    () => new Response(new Uint8Array(512 * 1024 + 1), { headers: { 'Content-Type': 'image/png' } }),
+    () => new Response(new Uint8Array(1024 * 1024 + 1), { headers: { 'Content-Type': 'image/png' } }),
     () => new Response('too large by header', {
-      headers: { 'Content-Type': 'image/png', 'Content-Length': '600000' },
+      headers: { 'Content-Type': 'image/png', 'Content-Length': '1048577' },
     }),
   ])('keeps the card when a permitted image request fails validation', async (imageResponse) => {
     const fetch = vi.fn()

@@ -10,9 +10,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "hono": "^4.13.21"
+    "hono": "^4.13.21",
+    "nxapi": "1.6.1-next.257"
   },
   "devDependencies": {
+    "esbuild": "0.28.2",
     "typescript": "~5.9.3",
     "vitest": "^3.2.0",
     "wrangler": "^4.167.0"

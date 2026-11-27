@@ -1,15 +1,23 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "nintendo-github-presence",
-  "main": "src/index.ts",
+  "main": ".wrangler/worker/index.mjs",
+  "no_bundle": true,
+  "build": {
+    "command": "node scripts/build-worker.mjs",
+    "watch_dir": ["src", "fixtures", "scripts"]
+  },
   "compatibility_date": "2026-11-24",
   "vars": {
-    "PREVIEW_STATUS": ""
+    "PREVIEW_STATUS": "",
+    "PRESENCE_SOURCE": "",
+    "MAIN_NSA_ID": "",
+    "NXAPI_AUTH_CLIENT_ID": ""
   },
   "observability": {
     "enabled": true,
     "logs": { "enabled": true, "invocation_logs": false },
-    // Subrequest traces can include the private Presence URL.
+    // Subrequest traces can include credentials and the private Presence URL.
     "traces": { "enabled": false }
   }
 }
