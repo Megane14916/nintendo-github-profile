@@ -68,7 +68,7 @@ describe('KV presence cards', () => {
     expect(response.headers.get('Cache-Control')).toBe('public, max-age=90');
     const svg = await response.text();
     expect(svg).toContain('Starlight Trails');
-    expect(svg).toContain('合計プレイ時間 125分');
+    expect(svg).toContain('合計プレイ時間 2.1時間');
     expect(svg.match(/<image /g)).toHaveLength(2);
     expect(fetch).not.toHaveBeenCalled();
   });

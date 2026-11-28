@@ -36,12 +36,12 @@ export const typography = {
     ${d.profile(23, 148, 360)}`,
 
   minutes: (d) => {
-    const digits = d.minutes?.toString();
-    const timeOrRecent = digits ? `
+    const { duration } = d;
+    const timeOrRecent = duration ? `
       <rect x="420" y="21" width="159" height="138" rx="18" fill="${deepRed}"/>
-      ${d.text(digits + d.minutesSuffix, 499.5, 101, {
+      ${d.text(duration, 499.5, 101, {
         width: 152,
-        size: Math.min(38, Math.floor(152 / (digits.length * 0.75 + (d.minutesSuffix.length === 1 ? 2.15 : 4)))),
+        size: Math.min(38, Math.floor(152 / (duration.length * 0.85 + 1.6))),
         align: 'middle',
       })}
       ${d.text(d.playTimeLabel, 499.5, 128, { width: 142, size: 13, align: 'middle' })}`

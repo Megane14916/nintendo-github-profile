@@ -13,7 +13,7 @@ const IMAGE_HOSTS = new Set([
   'cdn-image-e0d67c509fb203858ebcb2fe3f88c2aa.baas.nintendo.com',
 ]);
 const MAX_AVATAR_BYTES = 512 * 1024;
-const MAX_GAME_IMAGE_BYTES = 1024 * 1024;
+const MAX_GAME_IMAGE_BYTES = 2 * 1024 * 1024;
 const IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const PROXY_RESOURCE = /^\/api\/presence\/resources\/(baas|atum)\/[\w.-]+$/;
 

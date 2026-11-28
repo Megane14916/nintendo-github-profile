@@ -43,6 +43,18 @@ describe('renderCard', () => {
     expect(svg).toContain('>Sample Player</text>');
   });
 
+  it.each([
+    [1, '0.02時間'],
+    [30, '0.5時間'],
+    [60, '1時間'],
+    [9067, '151.1時間'],
+  ])('renders %i play minutes in hours', (minutes, hours) => {
+    const presence = normalizePresence(playing, fetchedAt);
+    if (!presence.game) throw new Error('Playing fixture is missing a game');
+    presence.game.totalPlayTimeMinutes = minutes;
+    expect(renderCard(presence)).toContain('>合計プレイ時間 ' + hours + '</text>');
+  });
+
   it('shortens long titles and escapes XML text including invalid characters', () => {
     const presence = normalizePresence(playing, fetchedAt);
     if (!presence.game) throw new Error('Playing fixture is missing a game');

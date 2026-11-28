@@ -8,7 +8,7 @@ const COPY = {
     offline: 'プレイ中のゲームはありません',
     recent: '最近プレイしたゲーム',
     time: '合計プレイ時間',
-    minutesSuffix: '分',
+    hoursSuffix: '時間',
     separator: '：',
   },
   en: {
@@ -18,11 +18,13 @@ const COPY = {
     offline: 'No game in progress',
     recent: 'Recently played',
     time: 'Total play time',
-    minutesSuffix: ' min',
+    hoursSuffix: ' h',
     separator: ': ',
   },
 };
 const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+const hoursFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
+const partialHourFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
 
 export interface CardCopyOptions {
   language?: CardLanguage;
@@ -47,7 +49,9 @@ export function getCardCopy(presence: GamePresence, { language = 'ja', lastPlaye
     ? { label: copy.recent, title: lastPlayed.titles?.[language] ?? lastPlayed.title }
     : null;
   const recentLine = recent ? recent.label + ': ' + recent.title : null;
-  const duration = minutes ? minutes + copy.minutesSuffix : null;
+  const duration = minutes
+    ? (minutes < 60 ? partialHourFormat : hoursFormat).format(minutes / 60) + copy.hoursSuffix
+    : null;
 
   return {
     language,
@@ -55,7 +59,7 @@ export function getCardCopy(presence: GamePresence, { language = 'ja', lastPlaye
     heading,
     playTime: duration ? copy.time + ' ' + duration : null,
     playTimeLabel: copy.time,
-    minutesSuffix: copy.minutesSuffix,
+    duration,
     recent,
     recentLine,
     compactDetail: duration ?? recent?.title ?? null,

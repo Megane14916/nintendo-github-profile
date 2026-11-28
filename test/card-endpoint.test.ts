@@ -133,8 +133,8 @@ describe('GET /card.svg', () => {
   });
 
   it.each([
-    ['minutes', '125分'],
-    ['handheld', '合計プレイ時間 125分'],
+    ['minutes', '2.1時間'],
+    ['handheld', '合計プレイ時間 2.1時間'],
   ])('keeps the full play time and unit in %s', async (style, time) => {
     const response = await app.request('/card.svg?style=' + style, {}, { PREVIEW_STATUS: 'playing' });
     expect(await response.text()).toContain('>' + time + '</text>');
@@ -145,7 +145,7 @@ describe('GET /card.svg', () => {
     const svg = await response.text();
     expect(svg).toContain('xml:lang="en"');
     expect(svg).toContain('>Online</text>');
-    expect(svg).toContain('125 min</text>');
+    expect(svg).toContain('2.1 h</text>');
     expect(svg).not.toContain('合計プレイ時間');
   });
 
@@ -188,7 +188,7 @@ describe('refresh and render nxapi-auth data', () => {
     expect(fetch.mock.calls.map(([url]) => String(url))).toEqual([endpoint, avatar, gameImage]);
     expect(fetch.mock.calls.every(([, init]) => init.redirect === 'manual')).toBe(true);
     expect(svg).toContain('Starlight Trails');
-    expect(svg).toContain('合計プレイ時間 125分');
+    expect(svg).toContain('合計プレイ時間 2.1時間');
     expect(svg.match(/<image /g)).toHaveLength(2);
     expect(svg).toContain('href="data:image/png;base64,' + png + '"');
     expect(svg).not.toContain(gameImage);
@@ -210,8 +210,8 @@ describe('refresh and render nxapi-auth data', () => {
     expect(fetch.mock.calls.map(([url]) => String(url))).toEqual([endpoint, proxyImage]);
   });
 
-  it('embeds a game image slightly larger than the avatar limit', async () => {
-    const bytes = new Uint8Array(585_236);
+  it('embeds a game image the size of the Smash Bros. cover while retaining the avatar limit', async () => {
+    const bytes = new Uint8Array(1_277_626);
     bytes.set(Uint8Array.from(atob(png), (char) => char.charCodeAt(0)));
     const largeImage = () => new Response(bytes, {
       headers: { 'Content-Type': 'image/png', 'Content-Length': String(bytes.length) },
@@ -287,9 +287,9 @@ describe('refresh and render nxapi-auth data', () => {
     () => new Response('missing', { status: 404 }),
     () => Response.redirect('https://example.invalid/image.png'),
     () => new Response('<svg/>', { headers: { 'Content-Type': 'image/svg+xml' } }),
-    () => new Response(new Uint8Array(1024 * 1024 + 1), { headers: { 'Content-Type': 'image/png' } }),
+    () => new Response(new Uint8Array(2 * 1024 * 1024 + 1), { headers: { 'Content-Type': 'image/png' } }),
     () => new Response('too large by header', {
-      headers: { 'Content-Type': 'image/png', 'Content-Length': '1048577' },
+      headers: { 'Content-Type': 'image/png', 'Content-Length': '2097153' },
     }),
   ])('keeps the card when a permitted image request fails validation', async (imageResponse) => {
     const fetch = vi.fn()

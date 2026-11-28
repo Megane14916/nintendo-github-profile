@@ -42,7 +42,7 @@ it('renders Coral presence, reuses its token, and retries once after token expir
   expect(playing.headers.get('Cache-Control')).toBe('public, max-age=90');
   const svg = await playing.text();
   expect(svg).toContain('Coral Test Game');
-  expect(svg).toContain('145分');
+  expect(svg).toContain('2.4時間');
   expect(svg).not.toContain('test-session-token');
 
   upstream.presence = { state: 'INACTIVE' };

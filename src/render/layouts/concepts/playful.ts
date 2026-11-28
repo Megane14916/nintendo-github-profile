@@ -21,7 +21,7 @@ export const playful = {
     ${d.art(93, 43, 94, 94, 7)}
     ${d.pill(202, 39, { tone: 'mint', radius: 6 })}
     ${d.text(d.title, 202, 93, { width: 300, size: 27, face: 'rounded' })}
-    ${d.text(d.time, 202, 120, { width: 162, size: 12 })}
+    ${d.text(d.time, 202, 120, { width: 162, size: 11 })}
     ${d.profile(365, 116, 139)}`,
 
   pixels: (d) => `

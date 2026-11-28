@@ -27,8 +27,7 @@ interface TextStyle {
 export interface Drawing {
   title: string | null;
   time: string | null;
-  minutes: number | null;
-  minutesSuffix: string;
+  duration: string | null;
   playTimeLabel: string;
   recent: CardCopy['recent'];
   name: string | null;
@@ -43,9 +42,8 @@ export interface Drawing {
 export type DrawConcept = (drawing: Drawing) => string;
 
 export function renderConcept(presence: GamePresence, assets: CardAssets, draw: DrawConcept, copy: CardCopy): string {
-  const { status, heading: title, playTime, playTimeLabel, minutesSuffix, recent, recentLine, language, description } = copy;
+  const { status, heading: title, playTime, playTimeLabel, duration, recent, recentLine, language, description } = copy;
   const time = playTime ?? recentLine;
-  const minutes = presence.game?.totalPlayTimeMinutes ?? null;
   const name = presence.user.name;
   const defs: string[] = [];
 
@@ -109,7 +107,7 @@ export function renderConcept(presence: GamePresence, assets: CardAssets, draw: 
       ${text(status, left + 21, y + 16, { width: width - 13, size: 12, color })}`;
   }
 
-  const body = draw({ title, time, minutes, minutesSuffix, playTimeLabel, recent, name, status, text, art, avatar, profile, pill });
+  const body = draw({ title, time, duration, playTimeLabel, recent, name, status, text, art, avatar, profile, pill });
   return `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="180" viewBox="0 0 600 180" xml:lang="${language}" font-weight="400" role="img" aria-labelledby="card-title">
   <title id="card-title">Nintendo Switch ${escapeXml(description)}</title>
   <defs>${defs.join('')}</defs>
